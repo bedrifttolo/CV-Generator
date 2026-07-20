@@ -2,7 +2,7 @@
 
 CVklar er en lett, lokal-først React-app der brukeren kan importere en eksisterende CV, kontrollere det viktigste innholdet, redigere direkte i dokumentet, bytte mal, få bransjetilpassede råd og laste ned CV og søknadsbrev som PDF.
 
-Den opprinnelige LaTeX-generatoren og Thomas Tolo Jensens CV er beholdt som eksempel og som referanse for «Fjord»-malen.
+Nettsiden bruker bare fiktive eksempeldata og et nøytralt illustrert profilbilde. Den opprinnelige LaTeX-generatoren ligger separat i prosjektet og brukes ikke som eksempelinnhold i nettsiden.
 
 ## Start nettsiden
 
@@ -20,18 +20,22 @@ npm run build
 npm run preview
 ```
 
-Bygget skrives til `dist/` og kan publiseres på Vercel eller en annen statisk host. `vercel.json` inneholder CSP, clickjacking-beskyttelse, MIME-beskyttelse, referrer-policy og begrenset permissions-policy.
+Bygget skrives til `dist/` og kan publiseres på Vercel eller en annen statisk host. `vercel.json` inneholder clickjacking-beskyttelse, MIME-beskyttelse, referrer-policy og begrenset permissions-policy. AdSense krever dynamiske annonse-domener; se publiseringsguiden for CSP-avveiningen.
+
+Se [VERCEL_DEPLOY.md](VERCEL_DEPLOY.md) for komplett publiseringsguide, domeneoppsett og sjekkliste før lansering.
 
 ## Hva som virker i frontend-versjonen
 
 - Import av PDF, DOCX og TXT, maks 10 MB. Teksten leses lokalt i nettleseren.
 - Heuristisk uttrekk av navn, kontaktdata, profil, erfaring, utdanning, kompetanse og språk.
 - Direkte `contentEditable`-redigering i CV-arket og automatisk lokal lagring.
-- Dra-og-slipp og knapper for å endre rekkefølgen på erfaring.
-- Profilbilde, lenker, fire maler og responsiv forhåndsvisning.
+- Legg til, slett, dra og flytt erfaring og utdanning direkte i dokumentpanelet.
+- Vis, skjul og sorter alle hovedfelt og sidefelt, inkludert kontakt, kompetanse, språk og referanser.
+- Lag egne seksjoner fra fritekst eller forslag som kurs, sertifiseringer, prosjekter og frivillig arbeid.
+- Profilbilde, lenker, åtte maler, fem fargetemaer og responsiv forhåndsvisning.
 - Lokal, regelbasert «Ansettbar AI» med bransjeord, treff mot annonsetekst og åpne NAV-kilder.
 - Søknadsbrevutkast og lokal PDF-eksport med jsPDF/html2canvas.
-- Norsk guide, personvernerklæring, vilkår, samtykkebanner og tydelig merket annonseplass.
+- Norsk guide, personvernerklæring, vilkår, samtykkebanner og Google AdSense-komponent.
 
 ## Sikkerhet og produksjonsgrenser
 

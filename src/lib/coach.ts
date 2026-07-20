@@ -23,7 +23,7 @@ export function analyzeCv(data: CvData, industry: Industry, jobText: string): Co
     detail:
       data.summary.length >= 140 && data.summary.length <= 520
         ? 'Sammendraget er konkret og har en god lengde for rask skumlesing.'
-        : 'Sikt på 3–5 korte linjer som kobler erfaringen din direkte til rollen.',
+        : 'Sikt på 3 til 5 korte linjer som kobler erfaringen din direkte til rollen.',
   })
   findings.push({
     level: measurable ? 'sterk' : 'viktig',
@@ -51,7 +51,7 @@ export function analyzeCv(data: CvData, industry: Industry, jobText: string): Co
   findings.push({
     level: data.experience.every((item) => item.bullets.length <= 4) ? 'sterk' : 'forbedre',
     title: 'Kort og prioriterbar erfaring',
-    detail: 'Prioriter 2–4 punkter per rolle, med det mest relevante øverst.',
+    detail: 'Prioriter 2 til 4 punkter per rolle, med det mest relevante øverst.',
   })
   return findings
 }

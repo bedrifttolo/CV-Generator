@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="Nøytralt eksempelportrett">
+  <rect width="320" height="320" fill="#dfe9e4"/>
+  <circle cx="160" cy="122" r="62" fill="#8ba99d"/>
+  <path d="M48 320c8-79 52-126 112-126s104 47 112 126H48Z" fill="#315d4c"/>
+  <circle cx="160" cy="160" r="142" fill="none" stroke="#f8f6ef" stroke-width="12"/>
+</svg>

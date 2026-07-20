@@ -1,67 +1,94 @@
-import profileUrl from '../assets/profile-web.jpg'
-import type { CvData, Industry } from './types'
+import profileUrl from '../assets/avatar-placeholder.svg'
+import type { CvData, Industry, ThemeId } from './types'
 
 export const defaultCv: CvData = {
-  name: 'Thomas Tolo Jensen',
-  title: 'Fullstack-utvikler · Masterstudent i programvareutvikling',
-  email: 'thomastj278@gmail.com',
-  phone: '+47 918 91 669',
-  location: 'Bergen, Norge',
-  website: 'tolojensentech.no',
+  name: 'Kari Nordmann',
+  title: 'Prosjektkoordinator · Digitale tjenester',
+  email: 'kari.nordmann@example.no',
+  phone: '+47 900 00 000',
+  location: 'Oslo, Norge',
+  website: 'linkedin.com/in/kari-nordmann',
   summary:
-    'Masterstudent i programvareutvikling med bachelor i informatikk, matematikk og økonomi. Bygger komplette digitale produkter fra idé og brukerbehov til frontend, API, database og lansering.',
+    'Strukturert prosjektkoordinator med erfaring fra digitale leveranser og kundedialog. Trives med å samle mennesker, holde fremdrift og gjøre komplekse oppgaver enkle å forstå.',
   skills: [
-    'React & TypeScript',
-    'Java & Spring Boot',
-    'PostgreSQL',
-    'Docker & CI/CD',
-    'Produktutvikling',
+    'Prosjektkoordinering',
+    'Digital samhandling',
+    'Analyse og rapportering',
+    'Kundebehov',
+    'Microsoft 365',
     'Norsk og engelsk',
   ],
   experience: [
     {
       id: 'exp-1',
-      role: 'Grunnlegger og fullstack-utvikler',
-      company: 'Tolo Jensen Technologies',
-      period: '2026 – nå',
+      role: 'Prosjektkoordinator',
+      company: 'Eksempel Digital AS',
+      period: '2023 til nå',
       bullets: [
-        'Driver et programvarestudio fra idé og brukerbehov til kode, test og lansering.',
-        'Utvikler web- og mobilprodukter med React, TypeScript, Spring Boot og PostgreSQL.',
+        'Koordinerer tverrfaglige leveranser fra oppstart til ferdig overlevering.',
+        'Forbedret rapporteringsrutinen og reduserte ukentlig administrasjonstid med 20 prosent.',
       ],
     },
     {
       id: 'exp-2',
-      role: 'Støttekontakt',
-      company: 'Bergen kommune',
-      period: '2024 – nå',
+      role: 'Kunderådgiver',
+      company: 'Sentrum Kundeservice AS',
+      period: '2020 til 2023',
       bullets: [
-        'Planlegger aktiviteter tilpasset brukerens behov og skaper trygg struktur i hverdagen.',
+        'Fulgt opp kunder, avklart behov og samarbeidet med fagmiljøer om gode løsninger.',
       ],
-    },
-    {
-      id: 'exp-3',
-      role: 'Mekaniker',
-      company: 'Ryde Technology AS',
-      period: '2023 – 2024',
-      bullets: ['Feilsøkte, reparerte og kvalitetssikret elektriske systemer i høyt tempo.'],
     },
   ],
   education: [
     {
       id: 'edu-1',
-      degree: 'Master i programvareutvikling',
-      school: 'Universitetet i Bergen & HVL',
-      period: '2025 – 2027',
-    },
-    {
-      id: 'edu-2',
-      degree: 'Bachelor i informatikk, matematikk og økonomi',
-      school: 'Universitetet i Bergen',
-      period: '2022 – 2025',
+      degree: 'Bachelor i organisasjon og ledelse',
+      school: 'Norsk eksempeluniversitet',
+      period: '2017 til 2020',
     },
   ],
-  languages: ['Norsk – flytende', 'Engelsk – flytende', 'Spansk – grunnleggende'],
+  languages: ['Norsk, morsmål', 'Engelsk, godt nivå'],
+  references: ['Oppgis på forespørsel'],
+  customSections: [],
+  hiddenSections: [],
+  sidebarOrder: ['contact', 'side-skills', 'languages', 'references'],
   photo: profileUrl,
+  sectionOrder: ['summary', 'experience', 'education', 'skills'],
+}
+
+export const blankCv: CvData = {
+  name: 'Navnet ditt',
+  title: 'Ønsket stilling eller fagområde',
+  email: 'deg@epost.no',
+  phone: '+47 000 00 000',
+  location: 'Sted, Norge',
+  website: 'linkedin.com/in/dittnavn',
+  summary:
+    'Skriv 3 til 5 korte linjer om hvem du er faglig, hva du kan bidra med og hvilken type rolle du ønsker.',
+  skills: ['Kompetanse 1', 'Kompetanse 2', 'Kompetanse 3'],
+  experience: [
+    {
+      id: 'blank-exp-1',
+      role: 'Stillingstittel',
+      company: 'Arbeidsgiver',
+      period: 'År til år',
+      bullets: ['Beskriv et konkret ansvar, en oppgave eller et målbart resultat.'],
+    },
+  ],
+  education: [
+    {
+      id: 'blank-edu-1',
+      degree: 'Utdanning eller grad',
+      school: 'Skole eller studiested',
+      period: 'År til år',
+    },
+  ],
+  languages: ['Norsk, nivå', 'Engelsk, nivå'],
+  references: ['Oppgis på forespørsel'],
+  customSections: [],
+  hiddenSections: [],
+  sidebarOrder: ['contact', 'side-skills', 'languages', 'references'],
+  photo: '',
   sectionOrder: ['summary', 'experience', 'education', 'skills'],
 }
 
@@ -75,11 +102,30 @@ export const industryLabels: Record<Industry, string> = {
 }
 
 export const templates = [
-  { id: 'nordlys', name: 'Nordlys', note: 'Redaksjonell og rolig', color: '#143f31' },
-  { id: 'fjord', name: 'Fjord', note: 'Din originale mal', color: '#27677a' },
-  { id: 'klassisk', name: 'Klassisk', note: 'ATS-vennlig og enkel', color: '#1e293b' },
-  { id: 'signal', name: 'Signal', note: 'Moderne og kreativ', color: '#ff5c35' },
+  { id: 'nordlys', name: 'Nordlys', note: 'Redaksjonell og rolig', color: '#143f31', source: 'CVklar original', sourceUrl: '' },
+  { id: 'fjord', name: 'Fjord', note: 'Tydelig og balansert', color: '#27677a', source: 'CVklar standard', sourceUrl: '' },
+  { id: 'klassisk', name: 'Klassisk', note: 'Tidløs og kompakt', color: '#1e293b', source: 'CVklar standard', sourceUrl: '' },
+  { id: 'signal', name: 'Signal', note: 'Moderne og kreativ', color: '#ff5c35', source: 'CVklar original', sourceUrl: '' },
+  { id: 'ats', name: 'ATS Enkel', note: 'Én kolonne, maskinlesbar', color: '#17231e', source: 'MIT Career Advising', sourceUrl: 'https://capd.mit.edu/resources/make-your-resume-ats-friendly/' },
+  { id: 'europass', name: 'Europass', note: 'Kjent europeisk format', color: '#185a9d', source: 'European Union', sourceUrl: 'https://europass.europa.eu/en/create-europass-cv' },
+  { id: 'harvard', name: 'Harvard', note: 'Fakta og resultater først', color: '#8b1e2d', source: 'Harvard MCS', sourceUrl: 'https://careerservices.fas.harvard.edu/resources/create-a-strong-resume/' },
+  { id: 'akademisk', name: 'Akademisk', note: 'Forskning og utdanning', color: '#203e68', source: 'Oxford Careers', sourceUrl: 'https://www.careers.ox.ac.uk/cvs' },
 ] as const
+
+export const colorThemes: Array<{
+  id: ThemeId
+  name: string
+  accent: string
+  sidebar: string
+  tint: string
+  highlight: string
+}> = [
+  { id: 'skog', name: 'Skog', accent: '#1d6d4b', sidebar: '#143f31', tint: '#dfe9e4', highlight: '#cbff5a' },
+  { id: 'hav', name: 'Hav', accent: '#1b6480', sidebar: '#17364a', tint: '#dcebf1', highlight: '#85d8e8' },
+  { id: 'burgunder', name: 'Burgunder', accent: '#8b2f45', sidebar: '#4a202b', tint: '#f0e1e5', highlight: '#efb1bd' },
+  { id: 'sand', name: 'Sand', accent: '#8a5a25', sidebar: '#44362a', tint: '#eee4d3', highlight: '#e3bd6b' },
+  { id: 'mono', name: 'Monokrom', accent: '#222222', sidebar: '#222222', tint: '#ececec', highlight: '#a8a8a8' },
+]
 
 export const navSources = [
   {

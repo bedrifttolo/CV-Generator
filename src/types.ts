@@ -1,4 +1,14 @@
-export type TemplateId = 'nordlys' | 'fjord' | 'klassisk' | 'signal'
+export type TemplateId =
+  | 'nordlys'
+  | 'fjord'
+  | 'klassisk'
+  | 'signal'
+  | 'ats'
+  | 'europass'
+  | 'harvard'
+  | 'akademisk'
+
+export type ThemeId = 'skog' | 'hav' | 'burgunder' | 'sand' | 'mono'
 
 export type Experience = {
   id: string
@@ -15,6 +25,13 @@ export type Education = {
   period: string
 }
 
+export type CustomSection = {
+  id: string
+  title: string
+  items: string[]
+  placement: 'main' | 'sidebar'
+}
+
 export type CvData = {
   name: string
   title: string
@@ -27,8 +44,12 @@ export type CvData = {
   experience: Experience[]
   education: Education[]
   languages: string[]
+  references: string[]
+  customSections: CustomSection[]
+  hiddenSections: string[]
+  sidebarOrder: string[]
   photo: string
-  sectionOrder: Array<'summary' | 'experience' | 'education' | 'skills'>
+  sectionOrder: string[]
 }
 
 export type CoachFinding = {

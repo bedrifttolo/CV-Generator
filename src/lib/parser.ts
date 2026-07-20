@@ -11,6 +11,8 @@ const sectionAliases: Record<string, string> = {
   ferdigheter: 'skills',
   nøkkelkompetanse: 'skills',
   språk: 'languages',
+  referanser: 'references',
+  referanse: 'references',
 }
 
 const cleanLines = (text: string) =>
@@ -61,6 +63,7 @@ export function parseResume(text: string, fallback: CvData): CvData {
     education: [],
     skills: [],
     languages: [],
+    references: [],
   }
   let current = 'root'
   lines.forEach((line) => {
@@ -121,6 +124,7 @@ export function parseResume(text: string, fallback: CvData): CvData {
       ? buckets.skills.flatMap((line) => line.split(/[,;|]/)).map((skill) => skill.trim()).filter(Boolean).slice(0, 14)
       : fallback.skills,
     languages: buckets.languages.length ? buckets.languages.slice(0, 6) : fallback.languages,
+    references: buckets.references.length ? buckets.references.slice(0, 6) : fallback.references,
     experience: experience.length ? experience.slice(0, 8) : fallback.experience,
     education: education.length ? education.slice(0, 5) : fallback.education,
   }

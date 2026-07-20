@@ -1,10 +1,12 @@
-import type { FocusEvent, ReactNode } from 'react'
+import type { CSSProperties, FocusEvent, ReactNode } from 'react'
 import { ExternalLink, Mail, MapPin, Phone } from 'lucide-react'
-import type { CvData, TemplateId } from '../types'
+import { colorThemes } from '../data'
+import type { CvData, TemplateId, ThemeId } from '../types'
 
 type Props = {
   data: CvData
   template: TemplateId
+  theme: ThemeId
   onChange: (next: CvData) => void
 }
 
@@ -43,7 +45,14 @@ function Editable({
   )
 }
 
-export default function CvPreview({ data, template, onChange }: Props) {
+export default function CvPreview({ data, template, theme, onChange }: Props) {
+  const palette = colorThemes.find((item) => item.id === theme) ?? colorThemes[0]
+  const themeStyle = {
+    '--cv-accent': palette.accent,
+    '--cv-side': palette.sidebar,
+    '--cv-tint': palette.tint,
+    '--cv-highlight': palette.highlight,
+  } as CSSProperties
   const update = <K extends keyof CvData>(key: K, value: CvData[K]) => onChange({ ...data, [key]: value })
   const updateExperience = (index: number, key: 'role' | 'company' | 'period', value: string) => {
     const experience = data.experience.map((entry, itemIndex) =>
@@ -65,8 +74,21 @@ export default function CvPreview({ data, template, onChange }: Props) {
     )
     update('education', education)
   }
+  const updateListItem = (key: 'skills' | 'languages' | 'references', index: number, value: string) => {
+    update(key, data[key].map((item, itemIndex) => itemIndex === index ? value : item))
+  }
+  const updateCustomSection = (id: string, title?: string, itemIndex?: number, value?: string) => {
+    update('customSections', data.customSections.map((section) => {
+      if (section.id !== id) return section
+      if (title !== undefined) return { ...section, title }
+      if (itemIndex !== undefined && value !== undefined) {
+        return { ...section, items: section.items.map((item, index) => index === itemIndex ? value : item) }
+      }
+      return section
+    }))
+  }
 
-  const sections: Record<CvData['sectionOrder'][number], ReactNode> = {
+  const sections: Record<string, ReactNode> = {
     summary: (
       <section className="cv-section" key="summary">
         <h2>Profil</h2>
@@ -127,26 +149,61 @@ export default function CvPreview({ data, template, onChange }: Props) {
       </section>
     ),
   }
+  data.customSections.filter((section) => section.placement === 'main').forEach((section) => {
+    sections[section.id] = (
+      <section className="cv-section" key={section.id}>
+        <h2><Editable onCommit={(value) => updateCustomSection(section.id, value)}>{section.title}</Editable></h2>
+        <ul className="cv-custom-list">{section.items.map((item, index) => <li key={`${section.id}-${index}`}><Editable multiline onCommit={(value) => updateCustomSection(section.id, undefined, index, value)}>{item}</Editable></li>)}</ul>
+      </section>
+    )
+  })
+
+  const sidebarSections: Record<string, ReactNode> = {
+    contact: (
+      <div className="cv-contact-section" key="contact">
+        <h2>Kontakt</h2>
+        <div className="cv-contact">
+          <a href={`mailto:${data.email}`}><Mail size={13} /><Editable onCommit={(value) => update('email', value)}>{data.email}</Editable></a>
+          <span><Phone size={13} /><Editable onCommit={(value) => update('phone', value)}>{data.phone}</Editable></span>
+          <span><MapPin size={13} /><Editable onCommit={(value) => update('location', value)}>{data.location}</Editable></span>
+          <a href={data.website.startsWith('http') ? data.website : `https://${data.website}`}><ExternalLink size={13} /><Editable onCommit={(value) => update('website', value)}>{data.website}</Editable></a>
+        </div>
+      </div>
+    ),
+    'side-skills': (
+      <div className="cv-side-block" key="side-skills">
+        <h2>Kompetanse</h2>
+        <ul>{data.skills.map((skill, index) => <li key={`${skill}-${index}`}><Editable onCommit={(value) => updateListItem('skills', index, value)}>{skill}</Editable></li>)}</ul>
+      </div>
+    ),
+    languages: (
+      <div className="cv-side-block" key="languages">
+        <h2>Språk</h2>
+        <ul>{data.languages.map((language, index) => <li key={`${language}-${index}`}><Editable onCommit={(value) => updateListItem('languages', index, value)}>{language}</Editable></li>)}</ul>
+      </div>
+    ),
+    references: (
+      <div className="cv-side-block" key="references">
+        <h2>Referanser</h2>
+        <ul>{data.references.map((reference, index) => <li key={`${reference}-${index}`}><Editable multiline onCommit={(value) => updateListItem('references', index, value)}>{reference}</Editable></li>)}</ul>
+      </div>
+    ),
+  }
+  data.customSections.filter((section) => section.placement === 'sidebar').forEach((section) => {
+    sidebarSections[section.id] = (
+      <div className="cv-side-block" key={section.id}>
+        <h2><Editable onCommit={(value) => updateCustomSection(section.id, value)}>{section.title}</Editable></h2>
+        <ul>{section.items.map((item, index) => <li key={`${section.id}-${index}`}><Editable multiline onCommit={(value) => updateCustomSection(section.id, undefined, index, value)}>{item}</Editable></li>)}</ul>
+      </div>
+    )
+  })
 
   return (
-    <div className={`cv-page template-${template}`} id="cv-document" aria-label="Redigerbar CV-forhåndsvisning">
+    <div className={`cv-page template-${template}`} style={themeStyle} id="cv-document" aria-label="Redigerbar CV-forhåndsvisning">
       <aside className="cv-sidebar">
         {data.photo && <img src={data.photo} alt={`Profilbilde av ${data.name}`} className="cv-photo" />}
         <div className="cv-sidebar-content">
-          <div className="cv-contact">
-            <a href={`mailto:${data.email}`}><Mail size={13} /><Editable onCommit={(value) => update('email', value)}>{data.email}</Editable></a>
-            <span><Phone size={13} /><Editable onCommit={(value) => update('phone', value)}>{data.phone}</Editable></span>
-            <span><MapPin size={13} /><Editable onCommit={(value) => update('location', value)}>{data.location}</Editable></span>
-            <a href={data.website.startsWith('http') ? data.website : `https://${data.website}`}><ExternalLink size={13} /><Editable onCommit={(value) => update('website', value)}>{data.website}</Editable></a>
-          </div>
-          <div className="cv-side-block">
-            <h2>Kompetanse</h2>
-            <ul>{data.skills.map((skill) => <li key={skill}>{skill}</li>)}</ul>
-          </div>
-          <div className="cv-side-block">
-            <h2>Språk</h2>
-            <ul>{data.languages.map((language) => <li key={language}>{language}</li>)}</ul>
-          </div>
+          {data.sidebarOrder.filter((id) => !data.hiddenSections.includes(id)).map((id) => sidebarSections[id])}
         </div>
       </aside>
       <main className="cv-main">
@@ -156,7 +213,7 @@ export default function CvPreview({ data, template, onChange }: Props) {
           <p><Editable onCommit={(value) => update('title', value)}>{data.title}</Editable></p>
         </header>
         <div className="cv-main-content">
-          {data.sectionOrder.map((section) => sections[section])}
+          {data.sectionOrder.filter((id) => !data.hiddenSections.includes(id)).map((id) => sections[id])}
         </div>
       </main>
     </div>

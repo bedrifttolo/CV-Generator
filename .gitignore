@@ -8,3 +8,6 @@ vite.config.d.ts
 .DS_Store
 build/
 validation/
+.env
+.env.local
+.env.*.local
