@@ -138,6 +138,8 @@ em { font-family: 'Fraunces', Georgia, serif; font-weight: 500; }
 .ai-showcase > div:last-child p { color: #617069; line-height: 1.8; }
 .templates-section { padding: 90px 0 150px; }
 .template-gallery { display: grid; grid-template-columns: repeat(4, 1fr); gap: 25px; margin: 65px 0 45px; }
+.template-poster { appearance: none; border: 0; padding: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.template-poster:focus-visible { outline: 3px solid var(--lime); outline-offset: 5px; }
 .template-poster > div:last-child { padding-top: 18px; display: grid; grid-template-columns: 30px 1fr; }
 .template-poster > div:last-child span { font-family: 'Fraunces', serif; font-size: 11px; color: #7e8982; grid-row: span 2; }
 .template-poster > div:last-child h3 { margin: 0; font-size: 17px; }

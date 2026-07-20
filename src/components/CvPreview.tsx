@@ -208,7 +208,6 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
       </aside>
       <main className="cv-main">
         <header className="cv-header">
-          <span className="cv-kicker">Curriculum vitae</span>
           <h1><Editable onCommit={(value) => update('name', value)}>{data.name}</Editable></h1>
           <p><Editable onCommit={(value) => update('title', value)}>{data.title}</Editable></p>
         </header>

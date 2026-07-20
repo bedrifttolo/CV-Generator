@@ -93,6 +93,11 @@ function App() {
     navigate('builder')
   }
 
+  const selectTemplate = (id: TemplateId) => {
+    setTemplate(id)
+    navigate('builder')
+  }
+
   return (
     <div className="app-shell">
       <Header view={view} navigate={navigate} mobileMenu={mobileMenu} setMobileMenu={setMobileMenu} />
@@ -104,7 +109,7 @@ function App() {
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
         >
-          {view === 'home' && <Home onStartBlank={startBlank} onOpen={() => navigate('builder')} onGuide={() => navigate('guide')} adsAllowed={consent === 'accepted'} />}
+          {view === 'home' && <Home onStartBlank={startBlank} onOpen={() => navigate('builder')} onGuide={() => navigate('guide')} onSelectTemplate={selectTemplate} adsAllowed={consent === 'accepted'} />}
           {view === 'builder' && <Builder cv={cv} setCv={setCv} template={template} setTemplate={setTemplate} theme={theme} setTheme={setTheme} />}
           {view === 'guide' && <Guide onStart={startBlank} />}
           {view === 'letter' && <LetterStudio cv={cv} />}
@@ -155,7 +160,7 @@ function Header({
   )
 }
 
-function Home({ onStartBlank, onOpen, onGuide, adsAllowed }: { onStartBlank: () => void; onOpen: () => void; onGuide: () => void; adsAllowed: boolean }) {
+function Home({ onStartBlank, onOpen, onGuide, onSelectTemplate, adsAllowed }: { onStartBlank: () => void; onOpen: () => void; onGuide: () => void; onSelectTemplate: (id: TemplateId) => void; adsAllowed: boolean }) {
   return (
     <>
       <section className="hero">
@@ -225,7 +230,7 @@ function Home({ onStartBlank, onOpen, onGuide, adsAllowed }: { onStartBlank: () 
       <section className="templates-section section-wrap">
         <div className="section-heading"><span className="eyebrow">Maler med personlighet</span><h2>Riktig uttrykk med samme innhold</h2></div>
         <div className="template-gallery">
-          {templates.map((item, index) => <TemplatePoster key={item.id} item={item} index={index} />)}
+          {templates.map((item, index) => <TemplatePoster key={item.id} item={item} index={index} onSelect={() => onSelectTemplate(item.id)} />)}
         </div>
         <button className="button button-outline centered" onClick={onOpen}>Utforsk alle malene <LayoutTemplate /></button>
       </section>
@@ -269,12 +274,12 @@ function EditorMockup() {
   )
 }
 
-function TemplatePoster({ item, index }: { item: typeof templates[number]; index: number }) {
+function TemplatePoster({ item, index, onSelect }: { item: typeof templates[number]; index: number; onSelect: () => void }) {
   return (
-    <motion.article className={`template-poster poster-${item.id}`} whileHover={{ y: -8 }} transition={{ type: 'spring', stiffness: 280, damping: 20 }}>
+    <motion.button type="button" className={`template-poster poster-${item.id}`} onClick={onSelect} aria-label={`Velg malen ${item.name} og fortsett til redigering`} whileHover={{ y: -8 }} whileTap={{ scale: .99 }} transition={{ type: 'spring', stiffness: 280, damping: 20 }}>
       <div className="poster-page"><aside style={{ background: item.color }} /><main><span /><h3>ELLA NORDMANN</h3><small>PROSJEKTLEDER</small><hr /><b>PROFIL</b><p /><p /><b>ERFARING</b><p /><p /><b>UTDANNING</b><p /></main></div>
       <div><span>0{index + 1}</span><h3>{item.name}</h3><p>{item.note}</p></div>
-    </motion.article>
+    </motion.button>
   )
 }
 
