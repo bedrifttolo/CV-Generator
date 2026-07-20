@@ -8,7 +8,7 @@ test('forside og CV-arbeidsbord fungerer', async ({ page }, testInfo) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: /CV-en som får frem/i })).toBeVisible()
   await expect(page.getByText('Behandles lokalt')).toHaveCount(0)
-  await expect(page.getByLabel('Google-annonse')).toBeVisible()
+  await expect(page.getByText('Google-annonseplass')).toHaveCount(0)
   await page.getByRole('button', { name: 'Kun nødvendig' }).click()
 
   if (testInfo.project.name === 'mobile') {
@@ -35,6 +35,8 @@ test('forside og CV-arbeidsbord fungerer', async ({ page }, testInfo) => {
   await page.getByRole('button', { name: 'Kurs', exact: true }).click()
   await expect(page.locator('.cv-sidebar')).toContainText('Kurs')
   await expect(page.locator('.cv-sidebar')).toContainText('Referanser')
+  await page.getByText('Nettside eller LinkedIn').click()
+  await expect(page.locator('.cv-contact')).not.toContainText('linkedin.com/in/dittnavn')
   await page.screenshot({ path: `test-results/${testInfo.project.name}-sections.png`, fullPage: true })
   await page.getByRole('button', { name: /Maler/ }).click()
   await page.getByRole('button', { name: /Fjord/ }).click()

@@ -47,6 +47,7 @@ export type CvData = {
   references: string[]
   customSections: CustomSection[]
   hiddenSections: string[]
+  hiddenContactFields: string[]
   sidebarOrder: string[]
   photo: string
   sectionOrder: string[]

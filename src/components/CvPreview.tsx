@@ -163,10 +163,10 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
       <div className="cv-contact-section" key="contact">
         <h2>Kontakt</h2>
         <div className="cv-contact">
-          <a href={`mailto:${data.email}`}><Mail size={13} /><Editable onCommit={(value) => update('email', value)}>{data.email}</Editable></a>
-          <span><Phone size={13} /><Editable onCommit={(value) => update('phone', value)}>{data.phone}</Editable></span>
-          <span><MapPin size={13} /><Editable onCommit={(value) => update('location', value)}>{data.location}</Editable></span>
-          <a href={data.website.startsWith('http') ? data.website : `https://${data.website}`}><ExternalLink size={13} /><Editable onCommit={(value) => update('website', value)}>{data.website}</Editable></a>
+          {!data.hiddenContactFields.includes('email') && <a href={`mailto:${data.email}`}><Mail size={13} /><Editable onCommit={(value) => update('email', value)}>{data.email}</Editable></a>}
+          {!data.hiddenContactFields.includes('phone') && <span><Phone size={13} /><Editable onCommit={(value) => update('phone', value)}>{data.phone}</Editable></span>}
+          {!data.hiddenContactFields.includes('location') && <span><MapPin size={13} /><Editable onCommit={(value) => update('location', value)}>{data.location}</Editable></span>}
+          {!data.hiddenContactFields.includes('website') && <a href={data.website.startsWith('http') ? data.website : `https://${data.website}`}><ExternalLink size={13} /><Editable onCommit={(value) => update('website', value)}>{data.website}</Editable></a>}
         </div>
       </div>
     ),

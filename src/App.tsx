@@ -55,6 +55,7 @@ function loadCv(): CvData {
       references: parsed.references ?? fallback.references,
       customSections: parsed.customSections ?? fallback.customSections,
       hiddenSections: parsed.hiddenSections ?? fallback.hiddenSections,
+      hiddenContactFields: parsed.hiddenContactFields ?? fallback.hiddenContactFields,
       sidebarOrder: (parsed.sidebarOrder ?? fallback.sidebarOrder).map((id) => id === 'skills' ? 'side-skills' : id),
       sectionOrder: parsed.sectionOrder ?? fallback.sectionOrder,
     }
@@ -371,6 +372,13 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
     setCv({ ...cv, hiddenSections })
   }
 
+  const toggleContactField = (id: string) => {
+    const hiddenContactFields = cv.hiddenContactFields.includes(id)
+      ? cv.hiddenContactFields.filter((field) => field !== id)
+      : [...cv.hiddenContactFields, id]
+    setCv({ ...cv, hiddenContactFields })
+  }
+
   const moveSection = (placement: 'main' | 'sidebar', index: number, direction: -1 | 1) => {
     const key = placement === 'main' ? 'sectionOrder' : 'sidebarOrder'
     const order = [...cv[key]]
@@ -478,6 +486,7 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
                   <h3>Sidefelt</h3>
                   <p className="section-help">Kontakt, lister og egne rekker langs siden</p>
                   <div className="section-manager">{cv.sidebarOrder.map((section, index) => <div key={section}><label><input type="checkbox" checked={!cv.hiddenSections.includes(section)} onChange={() => toggleSection(section)} /><span>{sectionLabel(section)}</span></label><span><button onClick={() => moveSection('sidebar', index, -1)} aria-label={`Flytt ${sectionLabel(section)} opp`}>↑</button><button onClick={() => moveSection('sidebar', index, 1)} aria-label={`Flytt ${sectionLabel(section)} ned`}>↓</button>{section.startsWith('custom-') && <button onClick={() => removeCustomSection(section)} aria-label={`Slett ${sectionLabel(section)}`}><Trash2 /></button>}</span></div>)}</div>
+                  <div className="contact-options"><b>Felter i Kontakt</b>{([['email', 'E-post'], ['phone', 'Telefon'], ['location', 'Sted'], ['website', 'Nettside eller LinkedIn']] as const).map(([id, label]) => <label key={id}><input type="checkbox" checked={!cv.hiddenContactFields.includes(id)} onChange={() => toggleContactField(id)} />{label}</label>)}</div>
                 </div>
                 <div className="panel-section">
                   <h3>Rader og innhold</h3>

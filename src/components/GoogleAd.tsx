@@ -46,25 +46,7 @@ export default function GoogleAd({ allowed, slot }: Props) {
     document.head.appendChild(script)
   }, [allowed, configured, slot])
 
-  if (!configured) {
-    return (
-      <aside className="ad-slot google-ad-setup" aria-label="Google-annonse">
-        <span>GOOGLE ADSENSE</span>
-        <p>Google-annonseplass</p>
-        <small>Aktiveres når AdSense-ID og annonseplass-ID er lagt inn i Vercel.</small>
-      </aside>
-    )
-  }
-
-  if (!allowed) {
-    return (
-      <aside className="ad-slot google-ad-setup" aria-label="Google-annonse deaktivert">
-        <span>ANNONSE</span>
-        <p>Google-annonser er slått av</p>
-        <small>Markedsføringssamtykke er ikke gitt.</small>
-      </aside>
-    )
-  }
+  if (!configured || !allowed) return null
 
   return (
     <aside className="google-ad-shell" aria-label="Annonse fra Google">
