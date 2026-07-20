@@ -1,0 +1,158 @@
+{
+  "name": "Thomas Tolo Jensen",
+  "headline": "FULLSTACK-UTVIKLER  |  MASTERSTUDENT I PROGRAMVAREUTVIKLING",
+  "profile": "Masterstudent i programvareutvikling med bachelor i informatikk, matematikk og økonomi. Bygger komplette digitale produkter fra idé og brukerbehov til frontend, API, database, sanntidsfunksjoner og deployment. Har sterk praktisk erfaring med Java/Spring Boot, React/TypeScript, PostgreSQL, Docker og event-drevne løsninger, og kombinerer teknisk gjennomføring med struktur, ansvar og tydelig produktforståelse.",
+  "contact": [
+    {"label": "Telefon", "text": "+47 918 91 669"},
+    {"label": "E-post", "text": "thomastj278@gmail.com", "url": "mailto:thomastj278@gmail.com"},
+    {"label": "Sted", "text": "Bergen, Norge"},
+    {"label": "Nettside", "text": "tolojensentech.no", "url": "https://www.tolojensentech.no"},
+    {"label": "GitHub", "text": "github.com/ThomasTolo", "url": "https://github.com/ThomasTolo"}
+  ],
+  "highlights": [
+    {"title": "END-TO-END", "text": "Fra behov og design til kode, test og lansering"},
+    {"title": "TEKNISK BREDDE", "text": "Web, mobil, backend, data og sanntid"},
+    {"title": "GJENNOMFØRING", "text": "Selvstendig ansvar og samarbeid i team"}
+  ],
+  "sidebar_page_1": [
+    {"title": "NØKKELKOMPETANSE", "items": ["Fullstack produktutvikling", "Backend, API-er og databaser", "Mobil- og webutvikling", "Sanntid og event-drevne systemer", "CI/CD, Docker og deployment", "Produktforståelse og enkel UX"]},
+    {"title": "TEKNOLOGI", "items": ["Java, Spring Boot, JPA/Hibernate", "React, TypeScript, JavaScript, Svelte", "Python, SQL, Kotlin og Swift", "REST, WebSockets og Spring Security", "PostgreSQL, Supabase, Redis og SQLite", "Kafka, RabbitMQ og Redis Cache", "Docker, GitHub Actions, Vercel og Render", "PyTorch og scikit-learn", "HTML/CSS, responsivt UI og Capacitor"]},
+    {"title": "METODER OG VERKTØY", "items": ["Git/GitHub og samarbeid i kodebase", "MVC-arkitektur", "UML- og ER-modellering", "Testing, feilsøking og iterasjon"]}
+  ],
+  "experience": [
+    {
+      "title": "Grunnlegger og fullstack-utvikler – Tolo Jensen Technologies",
+      "date": "Juli 2026 – d.d.",
+      "bullets": [
+        "Etablerte og driver et programvarestudio for apper, spill, nettsider, backend og automatisering – fra idé til lansering.",
+        "Tar ansvar for hele produktløpet: behov, UX, arkitektur, frontend, API, database, testing, CI/CD og deployment.",
+        "Utvikler Kollekt, SkålR og daglige nettleserspill, og leverer kundeoppdrag med fokus på tydelige løsninger og enkel brukeropplevelse."
+      ]
+    },
+    {
+      "title": "Støttekontakt – Bergen kommune",
+      "date": "Juni 2024 – d.d.",
+      "bullets": [
+        "Planlegger og følger opp aktiviteter tilpasset brukerens behov, med tydelig ansvar og kontinuitet.",
+        "Har utviklet sterk relasjonskompetanse, tålmodighet og evne til å skape trygg struktur i hverdagen."
+      ]
+    },
+    {
+      "title": "Mekaniker – Ryde Technology AS",
+      "date": "Juni 2023 – august 2024",
+      "bullets": [
+        "Feilsøkte, reparerte og kvalitetssikret elektriske sparkesykler og elektriske systemer.",
+        "Arbeidet effektivt både selvstendig og i team i en operativ hverdag med høyt tempo."
+      ]
+    },
+    {
+      "title": "Gardist – Forsvaret, Hans Majestet Kongens Garde",
+      "date": "August 2021 – juli 2022",
+      "bullets": [
+        "Gjennomførte førstegangstjeneste i et miljø med høye krav til presisjon, disiplin og pålitelighet.",
+        "Opparbeidet erfaring med samarbeid, initiativ og leveranser under press."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "degree": "Master i programvareutvikling",
+      "school": "Universitetet i Bergen (UiB) og Høgskulen på Vestlandet (HVL)",
+      "date": "August 2025 – forventet juni 2027",
+      "detail": "Faglig retning mot programvarearkitektur, produktutvikling og maskinlæring."
+    },
+    {
+      "degree": "Bachelor i informatikk, matematikk og økonomi (IMØ)",
+      "school": "Universitetet i Bergen (UiB)",
+      "date": "August 2022 – juni 2025",
+      "detail": "Tverrfaglig grunnlag i programmering, analyse, matematikk og økonomisk problemløsning."
+    }
+  ],
+  "results": [
+    "Karakter A på event-drevet fullstack-prosjekt med Kafka, Redis og WebSockets.",
+    "Tok hovedansvar for store deler av Kollekt i et utviklingsteam på seks.",
+    "Etablert eget programvarestudio, lansert selskapets nettside og utvikler egne produkter og kundeprosjekter."
+  ],
+  "sidebar_page_2": [
+    {"title": "SPRÅK", "items": ["Norsk – flytende", "Engelsk – flytende", "Spansk – grunnleggende"]},
+    {"title": "FAGLIG RETNING", "items": ["Programvareutvikling", "Produktutvikling", "Maskinlæring og data", "Apper, spill og digitale tjenester"]},
+    {"title": "ARBEIDSSTIL", "items": ["Strukturert og løsningsorientert", "Tar eierskap fra idé til leveranse", "Lærer raskt gjennom praktisk bygging", "Kommuniserer tydelig i team", "Trives med ansvar og høyt tempo"]},
+    {"title": "UTVIKLINGSMILJØ", "items": ["GitHub og GitHub Actions", "Docker og lokale testmiljøer", "Xcode Simulator", "Vercel og Render", "H2, SQLite og PostgreSQL"]},
+    {"title": "TVERRFAGLIG STYRKE", "items": ["Informatikk og systemforståelse", "Matematisk og analytisk problemløsning", "Økonomisk forståelse og prioritering"]}
+  ],
+  "sidebar_links": [
+    {"label": "Prosjekter", "text": "tolojensentech.no", "url": "https://www.tolojensentech.no"},
+    {"label": "Kode", "text": "github.com/ThomasTolo", "url": "https://github.com/ThomasTolo"}
+  ],
+  "projects_intro": {
+    "before": "Les mer om appene, se skjermbilder og utforsk funksjonene på ",
+    "link_text": "www.tolojensentech.no",
+    "url": "https://www.tolojensentech.no",
+    "after": "."
+  },
+  "projects": [
+    {
+      "title": "Kollekt – fullstack-app for kollektiv og studenthverdag",
+      "bullets": [
+        "Samler oppgaver, gjøremål, handlelister, utgifter, kalender, chat og gamification for delte husholdninger.",
+        "Tok hovedansvar for store deler av løsningen i et team på seks og jobbet på tvers av frontend, backend og database.",
+        "Designet for å gjøre hverdagskoordinering enklere gjennom tydelige flyter og sosiale funksjoner."
+      ],
+      "meta": [
+        {"label": "Teknologi", "text": "React/React Native, TypeScript, Spring Boot, PostgreSQL/Supabase, Capacitor, Swift, Kotlin og Docker"}
+      ]
+    },
+    {
+      "title": "FeedApp – event-drevet fullstack polling-applikasjon",
+      "bullets": [
+        "Utviklet sanntidsoppdateringer med WebSockets og event-drevet datadistribusjon med Kafka.",
+        "Samarbeidet i gruppe med felles kodebase, arbeidsdeling og versjonskontroll i GitHub.",
+        "Skrev forskningsrapport som sammenlignet Kafka og RabbitMQ for distribusjon av hendelser."
+      ],
+      "meta": [
+        {"label": "Resultat", "text": "Karakter A", "dark": true},
+        {"label": "Teknologi", "text": "Java/Spring Boot, React/TypeScript, Kafka, Redis, WebSockets og Docker"}
+      ]
+    },
+    {
+      "title": "SkålR – sosial spillapp",
+      "bullets": [
+        "Utvikler en mobilvennlig app som samler festleker, casinospill og raske aktiviteter i ett produkt.",
+        "Arbeider med spillmekanikk, innholdsstruktur, enkel navigasjon og en brukeropplevelse som fungerer i sosiale situasjoner.",
+        "Bygger produktet iterativt fra idé og design til funksjoner, innhold, testing og publisering."
+      ],
+      "meta": [
+        {"label": "Teknologi", "text": "Produktutvikling, frontend, responsivt UI, spilldesign og strukturert innholdsdata"}
+      ]
+    },
+    {
+      "title": "Tolo Jensen Technologies – nettside, daglige spill og produktplattform",
+      "bullets": [
+        "Designet og publiserte selskapets nettside som presenterer tjenester, apper, spill og kundeoppdrag.",
+        "Utvikler daglige nettleserspill med lokal progresjon og utfordringer som gir rom for rask testing av nye ideer.",
+        "Jobber med responsivt design, ytelse, deployment og kontinuerlig forbedring etter faktisk bruk."
+      ],
+      "meta": [
+        {"label": "Teknologi", "text": "Webutvikling, responsivt design, Git/GitHub, Vercel/Render og produktutvikling"}
+      ]
+    },
+    {
+      "title": "Glassburet – kundeprosjekt for web",
+      "bullets": [
+        "Bygget en tydelig, mobilvennlig nettside som samler informasjon og gjør det enkelt for besøkende å finne frem.",
+        "Kombinerte struktur, design og teknisk gjennomføring i en løsning tilpasset kundens behov."
+      ],
+      "meta": [
+        {"label": "Teknologi", "text": "Webutvikling, responsivt UI, publisering og kundeorientert produktarbeid"}
+      ]
+    }
+  ],
+  "other_projects_label": "Andre prosjekter",
+  "other_projects": "EscapeR (escape room-spill) og flere mindre prototyper innen apper, spill og data.",
+  "work_style": [
+    "Starter med å forstå problemet og hvem som skal bruke løsningen før teknologivalg tas.",
+    "Bryter arbeidet ned i tydelige leveranser, tester tidlig og forbedrer basert på bruk.",
+    "Ser design, funksjonalitet, arkitektur og drift i sammenheng for å bygge løsninger som er enkle å bruke og vedlikeholde."
+  ],
+  "references": "Referanser oppgis ved forespørsel."
+}

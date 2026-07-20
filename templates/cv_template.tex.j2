@@ -1,0 +1,268 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[paperwidth=595.304bp,paperheight=841.89bp,left=12.95bp,right=12.95bp,top=12.95bp,bottom=12.95bp]{geometry}
+\usepackage{fontspec}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{tikz}
+\usepackage{eso-pic}
+\usepackage{array}
+\usepackage{calc}
+\usepackage{setspace}
+\usepackage{iftex}
+
+\IfFontExistsTF{Calibri}{
+  \setmainfont{Calibri}[Ligatures=TeX]
+}{
+  \setmainfont{Carlito}[Ligatures=TeX]
+}
+
+\definecolor{Sidebar}{HTML}{192738}
+\definecolor{MainBg}{HTML}{EEF3F6}
+\definecolor{HighlightBg}{HTML}{DCE7EB}
+\definecolor{MainText}{HTML}{18222D}
+\definecolor{MutedText}{HTML}{465460}
+\definecolor{Accent}{HTML}{27677A}
+\definecolor{MainRule}{HTML}{A7BBC4}
+\definecolor{SideRule}{HTML}{D4E0E5}
+\definecolor{SideLink}{HTML}{5CB7CA}
+
+\hypersetup{
+  colorlinks=true,
+  urlcolor=Accent,
+  linkcolor=Accent,
+  pdfauthor={[[ name|tex ]]},
+  pdftitle={CV - [[ name|tex ]]}
+}
+
+\pagestyle{empty}
+\setlength{\parindent}{0bp}
+\setlength{\parskip}{0bp}
+\setstretch{1.15}
+\emergencystretch=1em
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+\setlength{\fboxsep}{0bp}
+
+% Exact page background and 2-column geometry copied from the baseline CV.
+\AddToShipoutPictureBG{%
+  \begin{tikzpicture}[remember picture,overlay]
+    \path[fill=Sidebar] ([xshift=12.95bp,yshift=-12.95bp]current page.north west)
+      rectangle ++(180bp,-810bp);
+    \path[fill=MainBg] ([xshift=192.95bp,yshift=-12.95bp]current page.north west)
+      rectangle ++(389.5bp,-810bp);
+  \end{tikzpicture}%
+}
+
+\newcommand{\sidefont}{\fontsize{8.5bp}{8.5bp}\selectfont}
+\newcommand{\sideheadingfont}{\fontsize{11bp}{11bp}\selectfont}
+\newcommand{\bodyfont}{\fontsize{8.5bp}{8.5bp}\selectfont}
+\newcommand{\smallbodyfont}{\fontsize{8.5bp}{8.5bp}\selectfont}
+\newcommand{\rolefont}{\fontsize{10.5bp}{10.5bp}\selectfont}
+\newcommand{\degreefont}{\fontsize{10bp}{10bp}\selectfont}
+\newcommand{\mainheadingfont}{\fontsize{15bp}{15bp}\selectfont}
+\newcommand{\projecttitlefont}{\fontsize{10.5bp}{10.5bp}\selectfont}
+
+\newcommand{\SideSection}[2][8bp]{%
+  \par\vspace{#1}%
+  {\color{white}\bfseries\sideheadingfont #2\par}%
+  \vspace{2.5bp}{\color{SideRule}\hrule height 1bp}\vspace{10.4bp}%
+}
+
+\newcommand{\SideItem}[1]{%
+  {\color{white}\sidefont\noindent•\hspace{2.3bp}#1\par}\vspace{0.5bp}%
+}
+
+\newcommand{\ContactLine}[2]{%
+  {\color{white}\sidefont\textbf{#1:} #2\par}\vspace{1bp}%
+}
+
+\newcommand{\MainSection}[2][5bp]{%
+  \par\vspace{#1}%
+  {\color{MainText}\bfseries\mainheadingfont #2\par}%
+  \vspace{2.5bp}{\color{MainRule}\hrule height 1.25bp}\vspace{4bp}%
+}
+
+\newcommand{\RoleTitle}[2][3bp]{%
+  \par\vspace{#1}{\color{MainText}\bfseries\rolefont #2\par}\vspace{1bp}%
+}
+
+\newcommand{\RoleDate}[1]{%
+  {\color{MutedText}\itshape\bodyfont #1\par}\vspace{1.8bp}%
+}
+
+\newcommand{\MainBullet}[2][0.8bp]{%
+  {\color{MainText}\bodyfont
+   \par\noindent\hangindent=12.25bp\hangafter=1\hspace*{3.6bp}•\hspace{3.2bp}#2\par}%
+  \vspace{#1}%
+}
+
+\newcommand{\MetaLine}[3][MutedText]{%
+  {\bodyfont\color{MainText}\textbf{#2:} \textcolor{#1}{#3}\par}\vspace{0.8bp}%
+}
+
+\newcommand{\EducationBlock}[4]{%
+  \par\vspace{2bp}%
+  {\color{MainText}\bfseries\degreefont #1\par}\vspace{0.8bp}%
+  {\color{MainText}\bodyfont #2\par}\vspace{0.7bp}%
+  {\color{MutedText}\itshape\bodyfont #3\par}\vspace{0.8bp}%
+  {\color{MainText}\bodyfont #4\par}\vspace{1bp}%
+}
+
+\newcommand{\ProjectTitle}[2][5bp]{%
+  \par\vspace{#1}{\color{MainText}\bfseries\projecttitlefont #2\par}\vspace{1bp}%
+}
+
+\newcommand{\UnderlinedLink}[3]{\href{#1}{\textcolor{#2}{\underline{#3}}}}
+
+\newcommand{\HighlightBox}[2]{%
+  \begin{minipage}[t][34bp][t]{129.85bp}
+    \vspace*{3bp}\hspace*{3.25bp}%
+    \begin{minipage}[t]{123.35bp}
+      {\fontsize{7.5bp}{7.5bp}\selectfont\color{Accent}\bfseries #1\par}%
+      \vspace{1.2bp}%
+      {\fontsize{7.5bp}{7.5bp}\selectfont\color{MainText} #2\par}%
+    \end{minipage}
+  \end{minipage}%
+}
+
+\begin{document}
+\noindent
+\begin{minipage}[t]{180bp}
+  \vspace*{-3.6bp}\hspace*{6bp}%
+  \begin{minipage}[t]{168bp}
+    \centering
+    \includegraphics[width=138.24bp]{assets/profile.png}\par
+    \vspace{-1.4bp}
+    \raggedright
+
+    \SideSection[3bp]{KONTAKT}
+[% for item in contact %]
+    \ContactLine{[[ item.label|tex ]]}{[% if item.get('url') %]\UnderlinedLink{[[ item.url|texurl ]]}{SideLink}{[[ item.text|tex ]]}[% else %][[ item.text|tex ]][% endif %]}
+[% endfor %]
+
+[% for section in sidebar_page_1 %]
+[% if loop.index == 1 %]
+    \SideSection[11.65bp]{[[ section.title|tex ]]}
+[% elif loop.index == 2 %]
+    \SideSection[10.27bp]{[[ section.title|tex ]]}
+[% else %]
+    \SideSection[12.15bp]{[[ section.title|tex ]]}
+[% endif %]
+[% for item in section['items'] %]
+    \SideItem{[[ item|tex ]]}
+[% endfor %]
+[% endfor %]
+  \end{minipage}
+\end{minipage}%
+\begin{minipage}[t]{389.5bp}
+  \vspace*{6bp}\hspace*{7.5bp}%
+  \begin{minipage}[t]{374.5bp}
+    \raggedright
+    \vspace*{-8.8bp}
+    {\color{MainText}\bfseries\fontsize{25bp}{25bp}\selectfont [[ name|tex ]]\par}\vspace{10.1bp}
+    {\color{Accent}\bfseries\fontsize{9bp}{9bp}\selectfont [[ headline|tex ]]\par}\vspace{6.9bp}
+    {\color{MainText}\fontsize{9bp}{9bp}\selectfont [[ profile|tex ]]\par}\vspace{2.6bp}
+
+    \hspace*{-7.5bp}\colorbox{HighlightBg}{%
+      \makebox[389.5bp][l]{%
+[% for h in highlights %]
+        \HighlightBox{[[ h.title|tex ]]}{[[ h.text|tex ]]}[% if not loop.last %]\hspace{0bp}[% endif %]
+[% endfor %]
+      }%
+    }\par
+    \vspace{17.8bp}
+
+    \MainSection[0bp]{Erfaring}
+    \vspace{6bp}
+[% for job in experience %]
+    \RoleTitle[[ '[2bp]' if loop.first else '[3bp]' ]]{[[ job.title|tex ]]}
+[% if loop.first %]    \vspace{1.9bp}
+[% endif %]    \RoleDate{[[ job.date|tex ]]}
+[% for bullet in job.bullets %]
+    \MainBullet{[[ bullet|tex ]]}
+[% endfor %]
+[% if loop.index == 1 %]    \vspace{5.5bp}
+[% elif loop.index == 2 %]    \vspace{3.2bp}
+[% elif loop.index == 3 %]    \vspace{3.3bp}
+[% else %]    \vspace{2.5bp}
+[% endif %][% endfor %]
+
+    \MainSection[4bp]{Utdanning}
+    \vspace{6bp}
+[% for ed in education %]
+    \EducationBlock{[[ ed.degree|tex ]]}{[[ ed.school|tex ]]}{[[ ed.date|tex ]]}{[[ ed.detail|tex ]]}
+[% if loop.first %]    \vspace{2.8bp}
+[% else %]    \vspace{1.8bp}
+[% endif %][% endfor %]
+
+    \MainSection[3bp]{Dokumenterte resultater}
+    \vspace{10.3bp}
+[% for item in results %]
+    \MainBullet[0.65bp]{[[ item|tex ]]}
+[% endfor %]
+  \end{minipage}
+\end{minipage}
+
+\newpage
+\noindent
+\begin{minipage}[t]{180bp}
+  \vspace*{6.16bp}\hspace*{6bp}%
+  \begin{minipage}[t]{168bp}
+[% for section in sidebar_page_2 %]
+[% if loop.index == 1 %]
+    \SideSection[3bp]{[[ section.title|tex ]]}
+[% elif loop.index == 2 %]
+    \SideSection[9.4bp]{[[ section.title|tex ]]}
+[% elif loop.index == 3 %]
+    \SideSection[10.02bp]{[[ section.title|tex ]]}
+[% elif loop.index == 4 %]
+    \SideSection[10.65bp]{[[ section.title|tex ]]}
+[% else %]
+    \SideSection[10.64bp]{[[ section.title|tex ]]}
+[% endif %]
+[% for item in section['items'] %]
+    \SideItem{[[ item|tex ]]}
+[% endfor %]
+[% endfor %]
+    \SideSection[9.4bp]{LENKER}
+[% for item in sidebar_links %]
+    \ContactLine{[[ item.label|tex ]]}{\UnderlinedLink{[[ item.url|texurl ]]}{SideLink}{[[ item.text|tex ]]}}
+[% endfor %]
+  \end{minipage}
+\end{minipage}%
+\begin{minipage}[t]{389.5bp}
+  \vspace*{6bp}\hspace*{7.5bp}%
+  \begin{minipage}[t]{374.5bp}
+    \raggedright
+    \vspace*{-9bp}
+    {\color{MainText}\bfseries\fontsize{20bp}{20bp}\selectfont Utvalgte prosjekter\par}\vspace{7.5bp}
+    {\color{MutedText}\fontsize{9bp}{9bp}\selectfont
+      [[ projects_intro.before|tex ]]\UnderlinedLink{[[ projects_intro.url|texurl ]]}{Accent}{\textbf{[[ projects_intro.link_text|tex ]]}}[[ projects_intro.after|tex ]]\par}\vspace{4.5bp}
+
+[% for project in projects %]
+    \ProjectTitle[[ '[2bp]' if loop.first else '[5bp]' ]]{[[ project.title|tex ]]}
+[% for bullet in project.bullets %]
+    \MainBullet[0.85bp]{[[ bullet|tex ]]}
+[% endfor %]
+[% for meta in project.meta %]
+    \MetaLine[[ '[MainText]' if meta.get('dark') else '[MutedText]' ]]{[[ meta.label|tex ]]}{[[ meta.text|tex ]]}
+[% endfor %]
+[% if loop.index == 1 %]    \vspace{6bp}
+[% elif loop.index == 2 %]    \vspace{5bp}
+[% elif loop.index == 3 %]    \vspace{5.2bp}
+[% elif loop.index == 4 %]    \vspace{5.2bp}
+[% else %]    \vspace{5.77bp}
+[% endif %][% endfor %]
+
+    \par\vspace{5.2bp}{\bodyfont\color{MainText}\textbf{[[ other_projects_label|tex ]]:} [[ other_projects|tex ]]\par}\vspace{1bp}
+
+    \MainSection[3.33bp]{Slik jobber jeg}
+[% for item in work_style %]
+    \MainBullet[0.8bp]{[[ item|tex ]]}
+[% endfor %]
+
+    \par\vspace{19.15bp}{\color{MutedText}\itshape\bodyfont [[ references|tex ]]\par}
+  \end{minipage}
+\end{minipage}
+\end{document}
