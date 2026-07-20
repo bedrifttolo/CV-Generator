@@ -27,7 +27,7 @@ import {
 import CvPreview from './components/CvPreview'
 import GoogleAd from './components/GoogleAd'
 import { blankCv, colorThemes, defaultCv, industryLabels, industrySources, navSources, templates } from './data'
-import { analyzeCv, makeLetter } from './lib/coach'
+import { analyzeCv, analyzeLetterFit, makeLetter } from './lib/coach'
 import { extractFileText, parseResume } from './lib/parser'
 import type { CvData, Industry, TemplateId, ThemeId } from './types'
 
@@ -589,6 +589,7 @@ function LetterStudio({ cv }: { cv: CvData }) {
   const [jobText, setJobText] = useState('')
   const [letter, setLetter] = useState(standardLetter)
   const [lastGenerated, setLastGenerated] = useState(0)
+  const letterFit = useMemo(() => analyzeLetterFit(letter, jobText), [letter, jobText])
   const generate = () => {
     const now = Date.now()
     if (now - lastGenerated < 2500) return
@@ -612,6 +613,7 @@ function LetterStudio({ cv }: { cv: CvData }) {
           <label>Stilling<input value={role} onChange={(event) => setRole(event.target.value)} placeholder="For eksempel frontend-utvikler" /></label>
           <label>Stillingsannonse<textarea rows={10} maxLength={8000} value={jobText} onChange={(event) => setJobText(event.target.value)} placeholder="Lim inn annonsen …" /></label>
           <button className="button button-full" onClick={generate}><WandSparkles /> Lag et førsteutkast</button>
+          {letterFit && <div className={`letter-fit ${letterFit.level}`} role="status"><Sparkles /><div><b>AI-sjekk: {letterFit.label}</b><p>Brevet dekker {letterFit.matched} av {letterFit.total} sentrale begreper fra annonsen.</p>{letterFit.missing.length > 0 && <small>Vurder om du kan dokumentere: {letterFit.missing.join(', ')}.</small>}</div></div>}
         </aside>
         <section className="letter-paper">
           <div className="letter-toolbar"><span><FileText /> Søknadsbrev</span><button onClick={download}><Download /> PDF</button></div>
