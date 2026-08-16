@@ -26,6 +26,8 @@ import {
 } from 'lucide-react'
 import CvPreview from './components/CvPreview'
 import GoogleAd from './components/GoogleAd'
+import JobsPage from './components/JobsPage'
+import LetterStudio from './components/LetterStudio'
 import {
   blankCv,
   colorThemes,
@@ -38,14 +40,17 @@ import {
   navSources,
   templates,
 } from './data'
-import { analyzeCv, analyzeLetterFit, makeLetter } from './lib/coach'
+import { analyzeCv } from './lib/coach'
 import { applyReferencePlacement, newId, normalizeCv } from './lib/document'
 import { acceptedImageTypes, readImageFile } from './lib/image'
+import { JOBS_STORAGE_KEY, LETTERS_STORAGE_KEY, loadCoverLetters, loadJobs } from './lib/jobs'
 import { extractFileText, parseResume } from './lib/parser'
 import { exportCvPdf } from './lib/pdf'
 import type {
   CvData,
+  CoverLetter,
   Industry,
+  JobPosting,
   Project,
   Reference,
   ReferencePlacement,
@@ -55,7 +60,7 @@ import type {
   TypeScaleId,
 } from './types'
 
-type View = 'home' | 'builder' | 'guide' | 'letter'
+type View = 'home' | 'builder' | 'jobs' | 'guide' | 'letter'
 type Legal = 'privacy' | 'terms' | null
 type BuilderTab = 'innhold' | 'mal' | 'ai'
 
@@ -78,9 +83,28 @@ function loadCv(): CvData {
   }
 }
 
+const viewPaths: Record<View, string> = {
+  home: '/',
+  builder: '/cv',
+  jobs: '/stillinger',
+  letter: '/soknadsbrev',
+  guide: '/cv-guiden',
+}
+
+function routeFromLocation() {
+  const path = window.location.pathname.replace(/\/$/, '') || '/'
+  const view = (Object.entries(viewPaths).find(([, route]) => route === path)?.[0] as View | undefined) || 'home'
+  const params = new URLSearchParams(window.location.search)
+  return { view, jobId: params.get('job') || params.get('jobId') || undefined }
+}
+
 function App() {
-  const [view, setView] = useState<View>('home')
+  const initialRoute = useMemo(routeFromLocation, [])
+  const [view, setView] = useState<View>(initialRoute.view)
+  const [selectedJobId, setSelectedJobId] = useState<string | undefined>(initialRoute.jobId)
   const [cv, setCv] = useState<CvData>(loadCv)
+  const [jobs, setJobs] = useState<JobPosting[]>(loadJobs)
+  const [coverLetters, setCoverLetters] = useState<CoverLetter[]>(loadCoverLetters)
   const [template, setTemplate] = useState<TemplateId>(() => (localStorage.getItem('cvklar-template') as TemplateId) || 'nordlys')
   const [theme, setTheme] = useState<ThemeId>(() => (localStorage.getItem('cvklar-theme') as ThemeId) || 'skog')
   const [legal, setLegal] = useState<Legal>(null)
@@ -92,12 +116,34 @@ function App() {
   }, [cv])
 
   useEffect(() => {
+    localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(jobs))
+  }, [jobs])
+
+  useEffect(() => {
+    localStorage.setItem(LETTERS_STORAGE_KEY, JSON.stringify(coverLetters))
+  }, [coverLetters])
+
+  useEffect(() => {
     localStorage.setItem('cvklar-template', template)
     localStorage.setItem('cvklar-theme', theme)
   }, [template, theme])
 
-  const navigate = (next: View) => {
+  useEffect(() => {
+    const onPopState = () => {
+      const route = routeFromLocation()
+      setView(route.view)
+      setSelectedJobId(route.jobId)
+      setMobileMenu(false)
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  const navigate = (next: View, jobId?: string) => {
+    const search = next === 'letter' && jobId ? `?job=${encodeURIComponent(jobId)}` : ''
+    window.history.pushState({}, '', `${viewPaths[next]}${search}`)
     setView(next)
+    setSelectedJobId(jobId)
     setMobileMenu(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -125,8 +171,9 @@ function App() {
         >
           {view === 'home' && <Home onStartBlank={startBlank} onOpen={() => navigate('builder')} onGuide={() => navigate('guide')} onSelectTemplate={selectTemplate} adsAllowed={consent === 'accepted'} />}
           {view === 'builder' && <Builder cv={cv} setCv={setCv} template={template} setTemplate={setTemplate} theme={theme} setTheme={setTheme} />}
+          {view === 'jobs' && <JobsPage jobs={jobs} onChange={setJobs} onCreateLetter={(jobId) => navigate('letter', jobId)} />}
           {view === 'guide' && <Guide onStart={startBlank} />}
-          {view === 'letter' && <LetterStudio cv={cv} />}
+          {view === 'letter' && <LetterStudio cv={cv} jobs={jobs} coverLetters={coverLetters} onLettersChange={setCoverLetters} initialJobId={selectedJobId} onSelectedJobChange={(jobId) => navigate('letter', jobId)} />}
         </motion.main>
       </AnimatePresence>
       {view !== 'builder' && <Footer navigate={navigate} setLegal={setLegal} />}
@@ -152,7 +199,7 @@ function Header({
   mobileMenu: boolean
   setMobileMenu: (value: boolean) => void
 }) {
-  const items: Array<[View, string]> = [['builder', 'Lag CV'], ['letter', 'Søknadsbrev'], ['guide', 'CV-guiden']]
+  const items: Array<[View, string]> = [['builder', 'Lag CV'], ['jobs', 'Stillinger'], ['letter', 'Søknadsbrev'], ['guide', 'CV-guiden']]
   return (
     <header className="site-header">
       <button className="brand" onClick={() => navigate('home')} aria-label="CVklar forside">
@@ -164,7 +211,7 @@ function Header({
         ))}
       </nav>
       <div className="header-actions">
-        <span className="privacy-pill"><ShieldCheck size={15} /> Lokal og privat</span>
+        <span className="privacy-pill"><ShieldCheck size={15} /> Local-first</span>
         <button className="button button-small" onClick={() => navigate('builder')}>Åpne CV <ArrowRight size={16} /></button>
         <button className="menu-button" onClick={() => setMobileMenu(!mobileMenu)} aria-expanded={mobileMenu} aria-label="Vis meny">
           {mobileMenu ? <X /> : <Menu />}
@@ -191,7 +238,7 @@ function Home({ onStartBlank, onOpen, onGuide, onSelectTemplate, adsAllowed }: {
           <button className="guide-link" onClick={onGuide}>Se hvordan det virker <ArrowDown size={15} /></button>
           <div className="trust-row">
             <span><Check size={14} /> Ingen konto</span>
-            <span><Check size={14} /> Data blir på enheten</span>
+            <span><Check size={14} /> CV lagres lokalt</span>
             <span><Check size={14} /> Gratis PDF</span>
           </div>
         </div>
@@ -252,7 +299,7 @@ function Home({ onStartBlank, onOpen, onGuide, onSelectTemplate, adsAllowed }: {
         <span className="eyebrow light">Klar når du er</span>
         <h2>Du har erfaringen<br /><em>La den bli sett</em></h2>
         <button className="button button-signal button-large" onClick={onStartBlank}>Start med tom CV <ArrowRight /></button>
-        <p>Ingen konto · Ingen kredittkort · Data på din enhet</p>
+        <p>Ingen konto · Ingen kredittkort · CV lagres på din enhet</p>
       </section>
     </>
   )
@@ -745,67 +792,9 @@ function Guide({ onStart }: { onStart: () => void }) {
   )
 }
 
-const standardLetter = `Søknad på stilling som [stilling]
-
-Hei,
-
-Jeg ønsker å søke på stillingen som [stilling] hos [virksomhet]. Rollen virker interessant fordi den kombinerer oppgaver jeg motiveres av med et miljø der jeg kan bidra og utvikle meg videre.
-
-Gjennom tidligere erfaring har jeg lært å arbeide strukturert, samarbeide godt og følge opp oppgaver fra start til slutt. [Legg inn et kort, konkret eksempel som viser et relevant resultat eller ansvar.]
-
-Jeg tror særlig min erfaring med [relevant kompetanse] kan være nyttig i denne rollen. Samtidig er jeg nysgjerrig, lærer raskt og tar ansvar for å levere arbeid av god kvalitet.
-
-Jeg håper bakgrunnen min kan være relevant, og ser frem til muligheten til å utdype motivasjonen og erfaringen min i et intervju.
-
-Vennlig hilsen
-[Navnet ditt]
-[Telefon] · [E-post]`
-
-function LetterStudio({ cv }: { cv: CvData }) {
-  const [company, setCompany] = useState('')
-  const [role, setRole] = useState('')
-  const [jobText, setJobText] = useState('')
-  const [letter, setLetter] = useState(standardLetter)
-  const [lastGenerated, setLastGenerated] = useState(0)
-  const letterFit = useMemo(() => analyzeLetterFit(letter, jobText), [letter, jobText])
-  const generate = () => {
-    const now = Date.now()
-    if (now - lastGenerated < 2500) return
-    setLastGenerated(now)
-    setLetter(makeLetter(cv, company, role, jobText))
-  }
-  const download = async () => {
-    const { jsPDF } = await import('jspdf')
-    const pdf = new jsPDF({ unit: 'mm', format: 'a4' })
-    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(11)
-    const lines = pdf.splitTextToSize(letter, 170)
-    pdf.text(lines, 20, 24)
-    pdf.save('Søknadsbrev.pdf')
-  }
-  return (
-    <div className="letter-page">
-      <div className="letter-heading"><span className="eyebrow">Søknadsstudio</span><h1>Et godt brev svarer på <em>én jobb</em></h1><p>Bruk CV-en som grunnlag, tilpass med annonsen og rediger hvert ord før du sender.</p></div>
-      <div className="letter-workspace section-wrap">
-        <aside>
-          <label>Virksomhet<input value={company} onChange={(event) => setCompany(event.target.value)} placeholder="For eksempel NRK" /></label>
-          <label>Stilling<input value={role} onChange={(event) => setRole(event.target.value)} placeholder="For eksempel frontend-utvikler" /></label>
-          <label>Stillingsannonse<textarea rows={10} maxLength={8000} value={jobText} onChange={(event) => setJobText(event.target.value)} placeholder="Lim inn annonsen …" /></label>
-          <button className="button button-full" onClick={generate}><WandSparkles /> Lag et førsteutkast</button>
-          {letterFit && <div className={`letter-fit ${letterFit.level}`} role="status"><Sparkles /><div><b>AI-sjekk: {letterFit.label}</b><p>Brevet dekker {letterFit.matched} av {letterFit.total} sentrale begreper fra annonsen.</p>{letterFit.missing.length > 0 && <small>Vurder om du kan dokumentere: {letterFit.missing.join(', ')}.</small>}</div></div>}
-        </aside>
-        <section className="letter-paper">
-          <div className="letter-toolbar"><span><FileText /> Søknadsbrev</span><button onClick={download}><Download /> PDF</button></div>
-          <textarea aria-label="Rediger søknadsbrev" value={letter} onChange={(event) => setLetter(event.target.value)} />
-          <div className="letter-note"><Sparkles /> AI-utkast kan inneholde feil. Kontroller at alle påstander er riktige og skrevet med din stemme.</div>
-        </section>
-      </div>
-    </div>
-  )
-}
-
 function Footer({ navigate, setLegal }: { navigate: (view: View) => void; setLegal: (type: Legal) => void }) {
   return (
-    <footer className="site-footer"><div className="footer-brand"><span className="brand-mark">ck</span><strong>CVklar</strong><p>Et enkelt arbeidsbord for CV og søknad laget for Norge.</p></div><div><b>Verktøy</b><button onClick={() => navigate('builder')}>Lag CV</button><button onClick={() => navigate('letter')}>Søknadsbrev</button><button onClick={() => navigate('guide')}>CV-guiden</button></div><div><b>Trygghet</b><button onClick={() => setLegal('privacy')}>Personvern</button><button onClick={() => setLegal('terms')}>Vilkår</button><a href="mailto:hei@cvklar.no">Kontakt</a></div><div className="footer-status"><ShieldCheck /><span><b>Dataene dine blir hos deg</b><small>Denne frontend-versjonen lagrer kun lokalt i nettleseren.</small></span></div><div className="footer-bottom"><span>© 2026 CVklar</span><span>Utformet i Bergen · Bokmål</span></div></footer>
+    <footer className="site-footer"><div className="footer-brand"><span className="brand-mark">ck</span><strong>CVklar</strong><p>Et enkelt arbeidsbord for CV, stillinger og søknad laget for Norge.</p></div><div><b>Verktøy</b><button onClick={() => navigate('builder')}>Lag CV</button><button onClick={() => navigate('jobs')}>Stillinger</button><button onClick={() => navigate('letter')}>Søknadsbrev</button><button onClick={() => navigate('guide')}>CV-guiden</button></div><div><b>Trygghet</b><button onClick={() => setLegal('privacy')}>Personvern</button><button onClick={() => setLegal('terms')}>Vilkår</button><a href="mailto:hei@cvklar.no">Kontakt</a></div><div className="footer-status"><ShieldCheck /><span><b>Local-first arbeidsbord</b><small>Dokumenter og stillingsliste lagres lokalt. Import og valgte AI-handlinger behandles på server.</small></span></div><div className="footer-bottom"><span>© 2026 CVklar</span><span>Utformet i Bergen · Bokmål</span></div></footer>
   )
 }
 
@@ -815,7 +804,7 @@ function LegalModal({ type, onClose }: { type: Legal; onClose: () => void }) {
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
       <motion.section className="legal-modal" role="dialog" aria-modal="true" aria-labelledby="legal-title" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} onMouseDown={(event) => event.stopPropagation()}>
         <button className="modal-close" onClick={onClose} aria-label="Lukk"><X /></button>
-        {type === 'privacy' ? <><span className="eyebrow">Sist oppdatert 20. juli 2026</span><h2 id="legal-title">Personvernerklæring</h2><p><strong>Kortversjonen:</strong> CV-en, profilbildet, stillingsannonsen og søknadsbrevet behandles på enheten din og lagres i nettleserens lokale lagring. Denne versjonen har ingen konto, database eller ekstern AI-overføring.</p><h3>Hva lagres?</h3><p>Dokumentdata lagres i localStorage slik at arbeidet ikke forsvinner ved oppdatering. Du kan slette alt ved å gjenopprette eksemplet eller tømme nettleserdata.</p><h3>Filer og PDF</h3><p>Opplastede filer leses i nettleseren og sendes ikke til CVklar. PDF-en genereres lokalt. Profilbilder lagres som en lokal dataadresse.</p><h3>Google-annonser og samtykke</h3><p>Når markedsføringssamtykke er gitt og AdSense er konfigurert, kan Google plassere eller lese informasjonskapsler, bruke IP-adresse og behandle bruksdata for annonselevering og måling. Før aktivering i Norge skal Google Privacy &amp; messaging eller en annen Google-sertifisert CMP være aktivert.</p><h3>Dine rettigheter</h3><p>Fordi CVklar ikke mottar dokumentopplysningene, har vi ikke en kopi å utlevere eller slette. Opplysninger behandlet av Google håndteres etter valgene i den sertifiserte samtykkeløsningen og Googles personvernvilkår.</p><p className="legal-warning">Dette er et produktutkast, ikke juridisk rådgivning. Legg inn korrekt selskapsnavn, organisasjonsnummer, adresse og kontaktpunkt før publisering.</p></> : <><span className="eyebrow">Sist oppdatert 20. juli 2026</span><h2 id="legal-title">Brukervilkår</h2><p>CVklar er et skrive- og formateringsverktøy. Du har ansvar for at innholdet du bruker er riktig, lovlig og ditt eget.</p><h3>AI-råd og utkast</h3><p>Råd og tekstutkast er veiledende og gir ingen garanti for intervju, ansettelse eller et bestemt resultat. Kontroller alltid fakta og tilpass språket før innsending.</p><h3>Tilgjengelighet</h3><p>Tjenesten leveres slik den er. Vi forsøker å gjøre lokal lagring og PDF-eksport pålitelig, men du bør beholde en egen kopi av viktige dokumenter.</p><h3>Akseptabel bruk</h3><p>Ikke bruk tjenesten til å laste opp skadevare, krenke andres rettigheter, utgi deg for å være noen andre eller automatisere misbruk.</p><h3>Reklame</h3><p>Google AdSense-annonser merkes tydelig og påvirker ikke rådene i CV-coachen. Ikke klikk annonser for å støtte tjenesten eller bruk automatiserte klikk.</p><p className="legal-warning">Før kommersiell lansering må vilkårene kvalitetssikres for faktisk foretaksinformasjon, betalingsmodell, annonseleverandører og valgt jurisdiksjon.</p></>}
+        {type === 'privacy' ? <><span className="eyebrow">Sist oppdatert 16. august 2026</span><h2 id="legal-title">Personvernerklæring</h2><p><strong>Kortversjonen:</strong> CV, profilbilde, lagrede stillinger og søknadsbrev lagres i nettleserens lokale lagring. CVklar har ingen konto eller database for disse dokumentene. URL-import og AI-funksjoner er valgfrie og krever serverbehandling.</p><h3>Hva lagres lokalt?</h3><p>CV-data, stillingsoversikt, søknadsstatus, søknadsdatoer og søknadsbrev lagres i localStorage slik at arbeidet ikke forsvinner ved oppdatering. Du kan fjerne dette ved å slette elementene i appen eller tømme nettleserdata.</p><h3>Import av stillinger</h3><p>Når du henter en annonse fra en URL, sendes URL-en til CVklar-serveren. Serveren henter siden, trekker ut ren tekst og returnerer strukturerte stillingsdata. Hvis modellbasert uttrekk er konfigurert, sendes den rensede annonseteksten til AI-tjenesten for strukturering. Hentet HTML kjøres ikke i nettleseren og stillingen lagres ikke i en CVklar-database.</p><h3>Valgfrie AI-funksjoner</h3><p>Når du aktivt bruker en AI-knapp, sendes relevant annonseinnhold og en sanitert kandidatprofil til den konfigurerte AI-tjenesten. Telefonnummer, e-post, bosted, profilbilde og annen kontaktinformasjon utelates. Den lokale CV-coachen og lokalt førsteutkast kan brukes uten denne overføringen.</p><h3>Filer og PDF</h3><p>Opplastede CV-filer leses i nettleseren og sendes ikke til CVklar. PDF genereres lokalt. Profilbilder lagres som en lokal dataadresse.</p><h3>Google-annonser og samtykke</h3><p>Når markedsføringssamtykke er gitt og AdSense er konfigurert, kan Google plassere eller lese informasjonskapsler, bruke IP-adresse og behandle bruksdata for annonselevering og måling. Før aktivering i Norge skal Google Privacy &amp; messaging eller en annen Google-sertifisert CMP være aktivert.</p><h3>Dine rettigheter</h3><p>Lokale dokumenter kontrolleres av deg i nettleseren. Data som behandles av eksterne tjenester håndteres etter deres vilkår og dine samtykkevalg.</p><p className="legal-warning">Dette er et produktutkast, ikke juridisk rådgivning. Legg inn korrekt behandlingsansvarlig, organisasjonsnummer, leverandørliste og kontaktpunkt før kommersiell publisering.</p></> : <><span className="eyebrow">Sist oppdatert 16. august 2026</span><h2 id="legal-title">Brukervilkår</h2><p>CVklar er et skrive-, organiserings- og formateringsverktøy. Du har ansvar for at innholdet du bruker er riktig, lovlig og ditt eget.</p><h3>Stillingsimport</h3><p>Automatisk import kan være ufullstendig eller slutte å fungere når en annonseside endres eller blokkerer tilgang. Kontroller alltid opplysninger og frister mot originalannonsen.</p><h3>AI-råd og utkast</h3><p>Råd og tekstutkast er veiledende og gir ingen garanti for intervju, ansettelse eller et bestemt resultat. Kontroller alltid fakta og tilpass språket før innsending. Ikke bruk forslag som tillegger deg erfaring du ikke har.</p><h3>Tilgjengelighet</h3><p>Tjenesten leveres slik den er. Vi forsøker å gjøre lokal lagring og PDF-eksport pålitelig, men du bør beholde en egen kopi av viktige dokumenter.</p><h3>Akseptabel bruk</h3><p>Ikke bruk tjenesten til å laste opp skadevare, krenke andres rettigheter, utgi deg for å være noen andre eller automatisere misbruk.</p><h3>Reklame</h3><p>Google AdSense-annonser merkes tydelig og påvirker ikke rådene i CV-coachen. Ikke klikk annonser for å støtte tjenesten eller bruk automatiserte klikk.</p><p className="legal-warning">Før kommersiell lansering må vilkårene kvalitetssikres for faktisk foretaksinformasjon, leverandører, betalingsmodell og valgt jurisdiksjon.</p></>}
       </motion.section>
     </div>
   )

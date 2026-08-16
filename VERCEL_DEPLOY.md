@@ -1,6 +1,6 @@
 # Publiser CVklar på Vercel
 
-Prosjektet er klart for statisk Vite-hosting. `vercel.json` inneholder SPA-rewrite og sikkerhetshoder, og produksjonsbygget skrives til `dist/`.
+Prosjektet bruker Vite-frontend og to Vercel Functions. `vercel.json` inneholder eksplisitt Vite-build, SPA-rewrite og sikkerhetshoder, og produksjonsbygget skrives til `dist/`.
 
 ## Anbefalt: GitHub og Vercel Dashboard
 
@@ -9,6 +9,7 @@ Prosjektet er klart for statisk Vite-hosting. `vercel.json` inneholder SPA-rewri
    ```bash
    npm install
    npm run build
+   npm run test:server
    npm run test:e2e
    ```
 
@@ -24,7 +25,7 @@ Prosjektet er klart for statisk Vite-hosting. `vercel.json` inneholder SPA-rewri
    - Install Command: `npm install` eller Vercels standard
    - Build Command: `npm run build`
    - Output Directory: `dist`
-   - Environment Variables: legg inn AdSense-verdiene nedenfor når Google har godkjent nettstedet
+   - Environment Variables: legg inn `OPENAI_API_KEY` som serverhemmelighet hvis AI-funksjonene skal aktiveres, og AdSense-verdiene nedenfor når Google har godkjent nettstedet
 
 5. Åpne den genererte `*.vercel.app`-adressen og test:
 
@@ -33,6 +34,9 @@ Prosjektet er klart for statisk Vite-hosting. `vercel.json` inneholder SPA-rewri
    - malbytte og direkte redigering
    - profilbilde
    - CV- og søknadsbrev-PDF
+   - URL-import, manuell stilling, frist og søknadsstatus
+   - direkte åpning av `/soknadsbrev?job=…`
+   - lokal fallback og eventuelle konfigurerte AI-handlinger
    - mobilvisning
 
 Når Git-integrasjonen er aktiv, blir push til `main` produksjon. Andre grener og pull requests får egne Preview Deployments.
@@ -78,6 +82,20 @@ Vercel oppretter SSL-sertifikat automatisk etter at DNS er verifisert. Bruk allt
 
 Google anbefaler `ads.txt`, selv om filen ikke er obligatorisk. Bruk alltid den eksakte linjen Google viser i AdSense-kontoen.
 
+## OpenAI på server
+
+Legg `OPENAI_API_KEY` inn for Production, Preview og Development etter behov. Nøkkelen skal ikke ligge i `.env` som committes og skal aldri ha `VITE_`-prefiks. Valgfri `OPENAI_MODEL` har standardverdi `gpt-5.4-mini`.
+
+Etter deploy kan du verifisere at en privat adresse stoppes:
+
+```bash
+curl -X POST https://ditt-domene.no/api/jobs/import \
+  -H 'Content-Type: application/json' \
+  --data '{"url":"http://127.0.0.1/private"}'
+```
+
+Forvent `BLOCKED_URL`. Uten OpenAI-nøkkel skal `/api/ai/job-assistant` returnere `AI_NOT_CONFIGURED`, og klienten bruker lokal relevanssjekk.
+
 ## Redigere forsiden
 
 - Tekst, seksjoner og rekkefølge: `src/App.tsx`, hovedsakelig komponenten `Home`.
@@ -92,7 +110,7 @@ Kjør `npm run dev` mens du redigerer. Endringer vises direkte på `http://local
 
 - Bytt ut e-post, foretaksnavn, organisasjonsnummer og kontaktinformasjon i personvern og vilkår.
 - Koble ikke en AI-nøkkel eller annonsehemmelighet direkte til Vite/React. Alt som prefikses med `VITE_` blir tilgjengelig i nettleseren.
-- En fremtidig ekstern AI må ligge bak en serverfunksjon med serverstyrt rate limiting, kostnadstak og personvernkontroller.
+- Vurder serverstyrt rate limiting, kostnadstak og sterkere misbruksvern før stor offentlig AI-bruk.
 - Aktiver ikke Google AdSense før Google-sertifisert CMP, leverandørinformasjon, personverntekst og faktisk annonse-ID er på plass.
 - Test sikkerhetshodene på produksjonsadressen etter deploy.
 - AdSense bruker skiftende annonse-domener. Den tidligere blokkerende CSP-en er derfor fjernet fra den statiske Vercel-konfigurasjonen; øvrige sikkerhetshoder er beholdt. En streng CSP for AdSense krever dynamiske nonces på serversiden.

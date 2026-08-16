@@ -97,3 +97,91 @@ export type CoachFinding = {
 }
 
 export type Industry = 'teknologi' | 'helse' | 'bygg' | 'økonomi' | 'service' | 'offentlig'
+
+export type JobSource = 'finn' | 'linkedin' | 'arbeidsplassen' | 'company' | 'other'
+
+export type JobDeadlineType = 'date' | 'ongoing' | 'asap' | 'unknown'
+
+export type ApplicationStatus =
+  | 'saved'
+  | 'planning'
+  | 'applied'
+  | 'interview'
+  | 'rejected'
+  | 'offer'
+  | 'withdrawn'
+
+export type JobContact = {
+  name?: string
+  role?: string
+  phone?: string
+  email?: string
+}
+
+export type JobAnalysis = {
+  coreRequirements: string[]
+  importantSkills: string[]
+  technologies: string[]
+  softSkills: string[]
+  responsibilities: string[]
+  keywords: string[]
+  seniority?: string
+  recommendedFocus: string[]
+}
+
+export type JobPosting = {
+  id: string
+  title: string
+  company: string
+  location?: string
+  deadline?: string
+  deadlineType: JobDeadlineType
+  publishedAt?: string
+  employmentType?: string
+  positionPercentage?: string
+  source: JobSource
+  sourceUrl: string
+  description?: string
+  originalText?: string
+  responsibilities: string[]
+  requiredQualifications: string[]
+  preferredQualifications: string[]
+  skills: string[]
+  technologies: string[]
+  benefits: string[]
+  contactPersons: JobContact[]
+  salary?: string
+  remotePolicy?: string
+  jobAnalysis: JobAnalysis
+  status: ApplicationStatus
+  appliedAt?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type CoverLetter = {
+  id: string
+  jobId?: string
+  company?: string
+  position?: string
+  content: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type CandidateMatchItem = {
+  requirement: string
+  evidence: string
+}
+
+export type CandidateMatch = {
+  strongMatches: CandidateMatchItem[]
+  partialMatches: CandidateMatchItem[]
+  missingRequirements: string[]
+  experiencesToHighlight: string[]
+  projectsToHighlight: string[]
+  keywordsToUse: string[]
+  advice: string[]
+  suggestedOpening: string
+  letter: string
+}

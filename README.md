@@ -1,6 +1,6 @@
 # CVklar — norsk CV- og søknadsbygger
 
-CVklar er en lett, lokal-først React-app der brukeren kan importere en eksisterende CV, kontrollere det viktigste innholdet, redigere direkte i dokumentet, bytte mal, få bransjetilpassede råd og laste ned CV og søknadsbrev som PDF.
+CVklar er en lokal-først React-app der brukeren kan bygge CV, samle stillinger, følge søknadsstatus og skrive målrettede søknadsbrev. Dokumenter og stillingsoversikt lagres i nettleseren; sikre Vercel-funksjoner brukes bare ved URL-import og valgfrie AI-handlinger.
 
 Nettsiden bruker bare fiktive eksempeldata og et nøytralt illustrert profilbilde. Den opprinnelige LaTeX-generatoren ligger separat i prosjektet og brukes ikke som eksempelinnhold i nettsiden.
 
@@ -20,11 +20,11 @@ npm run build
 npm run preview
 ```
 
-Bygget skrives til `dist/` og kan publiseres på Vercel eller en annen statisk host. `vercel.json` inneholder clickjacking-beskyttelse, MIME-beskyttelse, referrer-policy og begrenset permissions-policy. AdSense krever dynamiske annonse-domener; se publiseringsguiden for CSP-avveiningen.
+Bygget skrives til `dist/`. Hele funksjonssettet bør publiseres på Vercel eller en host som støtter Node-baserte API-ruter. `vercel.json` inneholder eksplisitt Vite-build, SPA-rewrite, clickjacking-beskyttelse, MIME-beskyttelse, referrer-policy og begrenset permissions-policy.
 
 Se [VERCEL_DEPLOY.md](VERCEL_DEPLOY.md) for komplett publiseringsguide, domeneoppsett og sjekkliste før lansering.
 
-## Hva som virker i frontend-versjonen
+## Hva som virker
 
 - Import av PDF, DOCX og TXT, maks 10 MB. Teksten leses lokalt i nettleseren.
 - Heuristisk uttrekk av navn, kontaktdata, profil, erfaring, utdanning, kompetanse og språk.
@@ -34,16 +34,24 @@ Se [VERCEL_DEPLOY.md](VERCEL_DEPLOY.md) for komplett publiseringsguide, domeneop
 - Lag egne seksjoner fra fritekst eller forslag som kurs, sertifiseringer, prosjekter og frivillig arbeid.
 - Profilbilde, lenker, åtte maler, fem fargetemaer og responsiv forhåndsvisning.
 - Lokal, regelbasert «Ansettbar AI» med bransjeord, treff mot annonsetekst og åpne NAV-kilder.
-- Søknadsbrevutkast og lokal PDF-eksport med jsPDF/html2canvas.
+- Lokal stillingsoversikt med import-preview, manuell oppretting, frister, filtre, sortering, status og søknadsdato.
+- Generisk URL-import med JSON-LD/metadata-fallback, renset annonsetekst og SSRF-beskyttelse i `/api/jobs/import`.
+- Søknadsbrev per stilling, direkte URL-valg, lokal relevanssjekk, valgfrie AI-råd og lokal PDF-eksport.
 - Norsk guide, personvernerklæring, vilkår, samtykkebanner og Google AdSense-komponent.
+
+## AI-konfigurasjon
+
+Kopier relevante verdier fra `.env.example`. `OPENAI_API_KEY` skal bare settes som serverhemmelighet lokalt eller i Vercel, aldri med `VITE_`-prefiks. Standardmodell er `gpt-5.4-mini` og kan overstyres med `OPENAI_MODEL`.
+
+Uten nøkkel fortsetter URL-import, stillingsoversikt, lokal analyse og lokalt førsteutkast å virke. AI-knappene forklarer at modellen ikke er konfigurert og viser lokal relevanssjekk i stedet.
 
 ## Sikkerhet og produksjonsgrenser
 
-Denne utgaven har ingen backend. Det er et bevisst personvernvalg: CV, bilde og annonsetekst sendes ikke til en server. Det betyr også:
+CV, bilder, lagrede stillinger og brev ligger lokalt. URL-import sender bare lenken til backend, mens en aktiv AI-handling sender annonsegrunnlag og en hvitelistet kandidatmodell uten navn, telefon, e-post, bosted eller bilde. Videre produksjonsarbeid bør blant annet vurdere:
 
-- Klientbasert rate limiting kan bare redusere tilfeldige dobbeltklikk; det beskytter ikke en ekstern API.
-- En ekte generativ AI må kobles via en server/edge function. API-nøkler skal aldri ligge i React-koden.
-- Serveren må da ha autentisering ved behov, serverstyrt rate limiting per IP/bruker, inngangsvalidering, logging uten CV-innhold, tidsavbrudd, kostnadstak og misbruksvern.
+- autentisering, serverstyrt rate limiting og kostnadstak før stor offentlig AI-bruk;
+- logging uten CV- eller annonseinnhold og dokumentert leverandør-/lagringstid;
+- juridisk kvalitetssikring av behandlingsgrunnlag, leverandørliste og rettighetsflyt;
 - Skylagring krever behandlingsgrunnlag, databehandleravtaler, sletting/innsyn, dokumentert lagringstid, kryptering og oppdatert personvernerklæring.
 - En ekte annonseleverandør må ikke lastes før gyldig samtykke der samtykke kreves. Oppdater leverandørliste og formål før lansering.
 - Vilkår og personvern i grensesnittet er produktutkast. Fyll inn foretaksnavn, organisasjonsnummer, adresse og kontaktpunkt, og få en juridisk kvalitetssjekk før kommersiell lansering.
