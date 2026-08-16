@@ -26,10 +26,34 @@ import {
 } from 'lucide-react'
 import CvPreview from './components/CvPreview'
 import GoogleAd from './components/GoogleAd'
-import { blankCv, colorThemes, defaultCv, industryLabels, industrySources, navSources, templates } from './data'
+import {
+  blankCv,
+  colorThemes,
+  defaultCv,
+  marginRange,
+  spaceScales,
+  typeScales,
+  industryLabels,
+  industrySources,
+  navSources,
+  templates,
+} from './data'
 import { analyzeCv, analyzeLetterFit, makeLetter } from './lib/coach'
+import { applyReferencePlacement, newId, normalizeCv } from './lib/document'
+import { acceptedImageTypes, readImageFile } from './lib/image'
 import { extractFileText, parseResume } from './lib/parser'
-import type { CvData, Industry, TemplateId, ThemeId } from './types'
+import { exportCvPdf } from './lib/pdf'
+import type {
+  CvData,
+  Industry,
+  Project,
+  Reference,
+  ReferencePlacement,
+  SpaceScaleId,
+  TemplateId,
+  ThemeId,
+  TypeScaleId,
+} from './types'
 
 type View = 'home' | 'builder' | 'guide' | 'letter'
 type Legal = 'privacy' | 'terms' | null
@@ -48,17 +72,7 @@ function loadCv(): CvData {
     if (!saved) return cloneDefault()
     const parsed = JSON.parse(saved) as Partial<CvData>
     if (isLegacyPersonalExample(parsed)) return cloneDefault()
-    const fallback = cloneDefault()
-    return {
-      ...fallback,
-      ...parsed,
-      references: parsed.references ?? fallback.references,
-      customSections: parsed.customSections ?? fallback.customSections,
-      hiddenSections: parsed.hiddenSections ?? fallback.hiddenSections,
-      hiddenContactFields: parsed.hiddenContactFields ?? fallback.hiddenContactFields,
-      sidebarOrder: (parsed.sidebarOrder ?? fallback.sidebarOrder).map((id) => id === 'skills' ? 'side-skills' : id),
-      sectionOrder: parsed.sectionOrder ?? fallback.sectionOrder,
-    }
+    return normalizeCv(parsed, cloneDefault())
   } catch {
     return cloneDefault()
   }
@@ -292,9 +306,17 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
   const [isExporting, setIsExporting] = useState(false)
   const [newSectionTitle, setNewSectionTitle] = useState('')
   const [newSectionPlacement, setNewSectionPlacement] = useState<'main' | 'sidebar'>('sidebar')
+  const [editingExperienceLogo, setEditingExperienceLogo] = useState<number | null>(null)
+  const [editingProjectImage, setEditingProjectImage] = useState<number | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const photoRef = useRef<HTMLInputElement>(null)
+  const experienceLogoRef = useRef<HTMLInputElement>(null)
+  const projectImageRef = useRef<HTMLInputElement>(null)
   const findings = useMemo(() => analyzeCv(cv, industry, jobText), [cv, industry, jobText])
+
+  // Normalisering skjer ved lasting av eldre dokumenter. Direkte redigering må
+  // beholde mellomrom og midlertidig tomme felt mens brukeren skriver.
+  const updateCv = (next: CvData) => setCv(next)
 
   const importFile = async (file?: File) => {
     if (!file) return
@@ -302,8 +324,8 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
     setNotice('Leser CV-en lokalt …')
     try {
       const text = await extractFileText(file)
-      setCv(parseResume(text, cv))
-      setNotice('Ferdig! Kontroller de markerte feltene før du laster ned.')
+      updateCv(parseResume(text, cv))
+      setNotice('Ferdig! Kontroller feltene før du laster ned.')
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Filen kunne ikke leses.')
     } finally {
@@ -311,14 +333,51 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
     }
   }
 
-  const changePhoto = (file?: File) => {
-    if (!file || !file.type.startsWith('image/') || file.size > 5 * 1024 * 1024) {
-      setNotice('Velg et JPG-, PNG- eller WebP-bilde under 5 MB.')
-      return
+  const changePhoto = async (file?: File) => {
+    if (!file) return
+    try {
+      const photo = await readImageFile(file, 880)
+      updateCv({ ...cv, photo })
+      setNotice('Profilbilde er oppdatert.')
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Bildet kunne ikke leses.')
+    } finally {
+      if (photoRef.current) photoRef.current.value = ''
     }
-    const reader = new FileReader()
-    reader.onload = () => setCv({ ...cv, photo: String(reader.result) })
-    reader.readAsDataURL(file)
+  }
+
+  const changeExperienceLogo = async (file?: File) => {
+    if (!file || editingExperienceLogo === null) return
+    try {
+      const companyLogo = await readImageFile(file, 420)
+      updateCv({
+        ...cv,
+        experience: cv.experience.map((entry, index) => (index === editingExperienceLogo ? { ...entry, companyLogo } : entry)),
+      })
+      setNotice('Bedriftslogoen er oppdatert.')
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Logoen kunne ikke leses.')
+    } finally {
+      setEditingExperienceLogo(null)
+      if (experienceLogoRef.current) experienceLogoRef.current.value = ''
+    }
+  }
+
+  const changeProjectImage = async (file?: File) => {
+    if (!file || editingProjectImage === null) return
+    try {
+      const image = await readImageFile(file, 420)
+      updateCv({
+        ...cv,
+        projects: cv.projects.map((entry, index) => (index === editingProjectImage ? { ...entry, image } : entry)),
+      })
+      setNotice('Prosjektikonet er oppdatert.')
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Prosjektikonet kunne ikke leses.')
+    } finally {
+      setEditingProjectImage(null)
+      if (projectImageRef.current) projectImageRef.current.value = ''
+    }
   }
 
   const exportPdf = async () => {
@@ -326,84 +385,59 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
     setIsExporting(true)
     setNotice('Lager PDF …')
     try {
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import('html2canvas'),
-        import('jspdf'),
-      ])
       const element = document.getElementById('cv-document')
-      if (!element) throw new Error('Fant ikke dokumentet.')
-      const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false })
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
-      const pageWidth = 210
-      const pageHeight = 297
-      const imageHeight = canvas.height * pageWidth / canvas.width
-      const image = canvas.toDataURL('image/jpeg', .94)
-      let offset = 0
-      pdf.addImage(image, 'JPEG', 0, offset, pageWidth, imageHeight)
-      while (imageHeight + offset > pageHeight) {
-        offset -= pageHeight
-        pdf.addPage()
-        pdf.addImage(image, 'JPEG', 0, offset, pageWidth, imageHeight)
-      }
-      pdf.save(`${cv.name.replace(/[^a-zæøå0-9]+/gi, '_')}_CV.pdf`)
+      if (!element) throw new Error('Fant ikke CV-dokumentet.')
+      await exportCvPdf(element, `${cv.name.replace(/[^a-zæøå0-9]+/gi, '_')}_CV.pdf`)
       setNotice('PDF-en er lastet ned.')
     } catch {
-      setNotice('PDF-en kunne ikke lages. Prøv utskrift til PDF i nettleseren.')
+      setNotice('PDF-en kunne ikke lages. Prøv på nytt.')
     } finally {
       setIsExporting(false)
     }
   }
 
-  const moveExperience = (index: number, direction: -1 | 1) => {
+  const move = <T,>(items: T[], index: number, direction: -1 | 1) => {
     const target = index + direction
-    if (target < 0 || target >= cv.experience.length) return
-    const next = [...cv.experience]
+    if (target < 0 || target >= items.length) return items
+    const next = [...items]
     ;[next[index], next[target]] = [next[target], next[index]]
-    setCv({ ...cv, experience: next })
-  }
-
-  const moveEducation = (index: number, direction: -1 | 1) => {
-    const target = index + direction
-    if (target < 0 || target >= cv.education.length) return
-    const next = [...cv.education]
-    ;[next[index], next[target]] = [next[target], next[index]]
-    setCv({ ...cv, education: next })
+    return next
   }
 
   const toggleSection = (id: string) => {
+    if (id === 'references') {
+      updateCv(applyReferencePlacement(cv, 'hidden'))
+      return
+    }
     const hiddenSections = cv.hiddenSections.includes(id)
       ? cv.hiddenSections.filter((section) => section !== id)
       : [...cv.hiddenSections, id]
-    setCv({ ...cv, hiddenSections })
+    updateCv({ ...cv, hiddenSections })
   }
 
   const toggleContactField = (id: string) => {
     const hiddenContactFields = cv.hiddenContactFields.includes(id)
       ? cv.hiddenContactFields.filter((field) => field !== id)
       : [...cv.hiddenContactFields, id]
-    setCv({ ...cv, hiddenContactFields })
+    updateCv({ ...cv, hiddenContactFields })
   }
 
   const moveSection = (placement: 'main' | 'sidebar', index: number, direction: -1 | 1) => {
     const key = placement === 'main' ? 'sectionOrder' : 'sidebarOrder'
-    const order = [...cv[key]]
-    const target = index + direction
-    if (target < 0 || target >= order.length) return
-    ;[order[index], order[target]] = [order[target], order[index]]
-    setCv({ ...cv, [key]: order })
+    updateCv({ ...cv, [key]: move(cv[key], index, direction) })
   }
 
   const addCustomSection = (rawTitle: string, placement: 'main' | 'sidebar') => {
     const title = rawTitle.trim()
     if (!title) return
-    const id = `custom-${crypto.randomUUID()}`
+    const id = `custom-${newId('section')}`
     const customSections = [...cv.customSections, { id, title, placement, items: ['Klikk for å skrive'] }]
     const key = placement === 'main' ? 'sectionOrder' : 'sidebarOrder'
-    setCv({ ...cv, customSections, [key]: [...cv[key], id] })
+    updateCv({ ...cv, customSections, [key]: [...cv[key], id] })
     setNewSectionTitle('')
   }
 
-  const removeCustomSection = (id: string) => setCv({
+  const removeCustomSection = (id: string) => updateCv({
     ...cv,
     customSections: cv.customSections.filter((section) => section.id !== id),
     sectionOrder: cv.sectionOrder.filter((section) => section !== id),
@@ -411,17 +445,54 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
     hiddenSections: cv.hiddenSections.filter((section) => section !== id),
   })
 
-  const updateList = (key: 'skills' | 'languages' | 'references', next: string[]) => setCv({ ...cv, [key]: next })
   const sectionLabel = (id: string) => ({
     summary: 'Profil',
     experience: 'Erfaring',
     education: 'Utdanning',
+    projects: 'Mine prosjekter',
     skills: 'Kompetanse nederst',
     contact: 'Kontakt',
     'side-skills': 'Kompetanse i sidefelt',
     languages: 'Språk',
     references: 'Referanser',
   }[id] ?? cv.customSections.find((section) => section.id === id)?.title ?? 'Egen seksjon')
+
+  const setReferencePlacement = (placement: ReferencePlacement) => updateCv(applyReferencePlacement(cv, placement))
+
+  const updateReference = (index: number, key: keyof Reference, value: string) => {
+    updateCv({
+      ...cv,
+      references: cv.references.map((reference, itemIndex) => (itemIndex === index ? { ...reference, [key]: value } : reference)),
+    })
+  }
+
+  const addProject = () => {
+    const project: Project = {
+      id: newId('project'),
+      title: 'Nytt prosjekt',
+      subtitle: '',
+      period: '',
+      description: 'Kort prosjektbeskrivelse',
+      technologies: [],
+      url: '',
+      githubUrl: '',
+      image: '',
+    }
+    const sectionOrder = cv.sectionOrder.includes('projects') ? cv.sectionOrder : [...cv.sectionOrder, 'projects']
+    updateCv({
+      ...cv,
+      projects: [...cv.projects, project],
+      sectionOrder,
+      hiddenSections: cv.hiddenSections.filter((section) => section !== 'projects'),
+    })
+  }
+
+  const updateProject = <K extends keyof Project>(index: number, key: K, value: Project[K]) => {
+    updateCv({
+      ...cv,
+      projects: cv.projects.map((project, itemIndex) => (itemIndex === index ? { ...project, [key]: value } : project)),
+    })
+  }
 
   return (
     <div className="builder-shell">
@@ -441,10 +512,14 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
               <>
                 <div className="panel-heading"><span>Dokument</span><h2>Innhold og rekkefølge</h2><p>Klikk også direkte i arket for å skrive.</p></div>
                 <input ref={fileRef} type="file" accept=".pdf,.docx,.txt" hidden onChange={(event) => importFile(event.target.files?.[0])} />
+                <input ref={photoRef} type="file" accept={acceptedImageTypes} aria-label="Velg profilbilde" hidden onChange={(event) => changePhoto(event.target.files?.[0])} />
+                <input ref={experienceLogoRef} type="file" accept={acceptedImageTypes} aria-label="Velg bedriftslogo" hidden onChange={(event) => changeExperienceLogo(event.target.files?.[0])} />
+                <input ref={projectImageRef} type="file" accept={acceptedImageTypes} aria-label="Velg prosjektikon" hidden onChange={(event) => changeProjectImage(event.target.files?.[0])} />
+
                 <div className="start-choice" aria-label="Velg hvordan du vil starte">
                   <button onClick={() => {
                     if (window.confirm('Starte med en tom CV? Nåværende innhold erstattes i nettleseren.')) {
-                      setCv(cloneBlank())
+                      updateCv(cloneBlank())
                       setNotice('Tom CV er klar. Klikk direkte i dokumentet for å skrive.')
                     }
                   }}><PenLine /><span><b>Start fra scratch</b><small>Fyll ut selv, ingen fil nødvendig</small></span></button>
@@ -452,64 +527,146 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
                 </div>
                 <div className="optional-note"><Check /> Opplasting er helt valgfritt. Alle felt kan skrives og redigeres direkte.</div>
                 {notice && <div className="notice" role="status">{notice}</div>}
-                <input ref={photoRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(event) => changePhoto(event.target.files?.[0])} />
+
                 <button className="panel-action" onClick={() => photoRef.current?.click()}><ImagePlus /> Bytt profilbilde</button>
+
                 <div className="panel-section">
-                  <div className="panel-section-head"><h3>Erfaring</h3><button onClick={() => setCv({ ...cv, experience: [...cv.experience, { id: crypto.randomUUID(), role: 'Ny stilling', company: 'Arbeidsgiver', period: 'År til år', bullets: ['Beskriv et konkret ansvar eller resultat.'] }] })}><Plus /> Legg til</button></div>
+                  <div className="panel-section-head"><h3>Erfaring</h3><button onClick={() => updateCv({ ...cv, experience: [...cv.experience, { id: newId('exp'), role: 'Ny stilling', company: 'Arbeidsgiver', period: 'År til år', bullets: ['Beskriv et konkret ansvar eller resultat.'], companyLogo: '' }] })}><Plus /> Legg til</button></div>
                   <div className="reorder-list">
                     {cv.experience.map((entry, index) => (
-                      <article key={entry.id} draggable onDragStart={(event) => event.dataTransfer.setData('text/plain', String(index))} onDragOver={(event) => event.preventDefault()} onDrop={(event) => {
-                        const from = Number(event.dataTransfer.getData('text/plain'))
-                        const next = [...cv.experience]
-                        const [moved] = next.splice(from, 1)
-                        next.splice(index, 0, moved)
-                        setCv({ ...cv, experience: next })
-                      }}>
-                        <GripVertical /><div><b>{entry.role}</b><small>{entry.company}</small></div>
-                        <span><button onClick={() => moveExperience(index, -1)} aria-label="Flytt opp">↑</button><button onClick={() => moveExperience(index, 1)} aria-label="Flytt ned">↓</button><button onClick={() => setCv({ ...cv, experience: cv.experience.filter((item) => item.id !== entry.id) })} aria-label="Slett"><Trash2 /></button></span>
+                      <article key={entry.id}>
+                        <GripVertical />
+                        {entry.companyLogo && <img className="editor-item-image" src={entry.companyLogo} alt="" aria-hidden="true" />}
+                        <div>
+                          <b>{entry.role}</b><small>{entry.company}</small>
+                          <div className="editor-media-actions">
+                            <button onClick={() => { setEditingExperienceLogo(index); experienceLogoRef.current?.click() }}><ImagePlus /> {entry.companyLogo ? 'Bytt logo' : 'Bedriftslogo (valgfritt)'}</button>
+                            {entry.companyLogo && <button onClick={() => updateCv({ ...cv, experience: cv.experience.map((item, itemIndex) => itemIndex === index ? { ...item, companyLogo: '' } : item) })}><X /> Fjern</button>}
+                          </div>
+                        </div>
+                        <span>
+                          <button onClick={() => updateCv({ ...cv, experience: move(cv.experience, index, -1) })} aria-label="Flytt opp">↑</button>
+                          <button onClick={() => updateCv({ ...cv, experience: move(cv.experience, index, 1) })} aria-label="Flytt ned">↓</button>
+                          <button onClick={() => updateCv({ ...cv, experience: cv.experience.filter((item) => item.id !== entry.id) })} aria-label="Slett erfaring"><Trash2 /></button>
+                        </span>
                       </article>
                     ))}
                   </div>
                 </div>
+
                 <div className="panel-section">
-                  <div className="panel-section-head"><h3>Utdanning</h3><button onClick={() => setCv({ ...cv, education: [...cv.education, { id: crypto.randomUUID(), degree: 'Ny utdanning', school: 'Skole eller studiested', period: 'År til år' }] })}><Plus /> Legg til</button></div>
+                  <div className="panel-section-head"><h3>Utdanning</h3><button onClick={() => updateCv({ ...cv, education: [...cv.education, { id: newId('edu'), degree: 'Ny utdanning', school: 'Skole eller studiested', period: 'År til år' }] })}><Plus /> Legg til</button></div>
                   <div className="reorder-list">
                     {cv.education.map((entry, index) => (
                       <article key={entry.id}>
                         <GripVertical /><div><b>{entry.degree}</b><small>{entry.school}</small></div>
-                        <span><button onClick={() => moveEducation(index, -1)} aria-label="Flytt utdanning opp">↑</button><button onClick={() => moveEducation(index, 1)} aria-label="Flytt utdanning ned">↓</button><button onClick={() => setCv({ ...cv, education: cv.education.filter((item) => item.id !== entry.id) })} aria-label="Slett utdanning"><Trash2 /></button></span>
+                        <span><button onClick={() => updateCv({ ...cv, education: move(cv.education, index, -1) })} aria-label="Flytt utdanning opp">↑</button><button onClick={() => updateCv({ ...cv, education: move(cv.education, index, 1) })} aria-label="Flytt utdanning ned">↓</button><button onClick={() => updateCv({ ...cv, education: cv.education.filter((item) => item.id !== entry.id) })} aria-label="Slett utdanning"><Trash2 /></button></span>
                       </article>
                     ))}
                   </div>
                 </div>
+
+                <div className="panel-section">
+                  <div className="panel-section-head"><h3>Mine prosjekter</h3><button onClick={addProject}><Plus /> Legg til</button></div>
+                  <div className="reorder-list">
+                    {cv.projects.map((entry, index) => (
+                      <article className="project-editor-card" key={entry.id}>
+                        <GripVertical />
+                        {entry.image && <img className="editor-item-image" src={entry.image} alt="" aria-hidden="true" />}
+                        <div>
+                          <b>{entry.title || 'Uten navn'}</b><small>{entry.subtitle || 'Kort undertittel'}</small>
+                          <div className="editor-media-actions">
+                            <button onClick={() => { setEditingProjectImage(index); projectImageRef.current?.click() }}><ImagePlus /> {entry.image ? 'Bytt ikon' : 'Prosjektikon (valgfritt)'}</button>
+                            {entry.image && <button onClick={() => updateProject(index, 'image', '')}><X /> Fjern</button>}
+                          </div>
+                          <div className="project-fields">
+                            <label>Prosjektnavn<input value={entry.title} onChange={(event) => updateProject(index, 'title', event.target.value)} /></label>
+                            <label>Rolle / undertittel<input value={entry.subtitle ?? ''} onChange={(event) => updateProject(index, 'subtitle', event.target.value)} /></label>
+                            <label>Periode<input value={entry.period ?? ''} onChange={(event) => updateProject(index, 'period', event.target.value)} /></label>
+                            <label className="field-wide">Kort beskrivelse<textarea rows={3} value={entry.description ?? ''} onChange={(event) => updateProject(index, 'description', event.target.value)} /></label>
+                            <label className="field-wide">Teknologier <small>Skill med komma eller ·</small><input value={(entry.technologies ?? []).join(' · ')} onChange={(event) => updateProject(index, 'technologies', event.target.value.split(/[,·]/).map((item) => item.trim()))} /></label>
+                            <label>Prosjektlenke<input type="url" value={entry.url ?? ''} onChange={(event) => updateProject(index, 'url', event.target.value)} placeholder="https://…" /></label>
+                            <label>GitHub-lenke<input type="url" value={entry.githubUrl ?? ''} onChange={(event) => updateProject(index, 'githubUrl', event.target.value)} placeholder="https://github.com/…" /></label>
+                          </div>
+                        </div>
+                        <span>
+                          <button onClick={() => updateCv({ ...cv, projects: move(cv.projects, index, -1) })} aria-label="Flytt prosjekt opp">↑</button>
+                          <button onClick={() => updateCv({ ...cv, projects: move(cv.projects, index, 1) })} aria-label="Flytt prosjekt ned">↓</button>
+                          <button onClick={() => updateCv({ ...cv, projects: cv.projects.filter((item) => item.id !== entry.id) })} aria-label="Slett prosjekt"><Trash2 /></button>
+                        </span>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="panel-section">
+                  <h3>Referanser</h3>
+                  <div className="reference-placement" role="radiogroup" aria-label="Plassering av referanser">
+                    {([
+                      ['hidden', 'Skjult'],
+                      ['sidebar', 'Sidefelt'],
+                      ['main', 'Hovedfelt'],
+                    ] as const).map(([value, label]) => (
+                      <label key={value}>
+                        <input type="radio" name="referencePlacement" checked={cv.referencePlacement === value} onChange={() => setReferencePlacement(value as ReferencePlacement)} />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="list-editor">
+                    <div><b>Referansepersoner</b><button onClick={() => updateCv({ ...cv, references: [...cv.references, { id: newId('ref'), text: 'Oppgis på forespørsel' }] })}><Plus /> Ny referanse</button></div>
+                    {cv.references.map((reference, index) => (
+                      <span key={reference.id}>
+                        <small>{reference.name || reference.text || `Referanse ${index + 1}`}</small>
+                        <button onClick={() => updateCv({ ...cv, references: cv.references.filter((item) => item.id !== reference.id) })} aria-label={`Slett referanse ${index + 1}`}><X /></button>
+                      </span>
+                    ))}
+                  </div>
+                  {cv.references.map((reference, index) => (
+                    <div className="reference-fields" key={`${reference.id}-fields`}>
+                      <strong>Referanse {index + 1}</strong>
+                      <label>Navn<input value={reference.name ?? ''} onChange={(event) => updateReference(index, 'name', event.target.value)} /></label>
+                      <label>Rolle<input value={reference.role ?? ''} onChange={(event) => updateReference(index, 'role', event.target.value)} /></label>
+                      <label>Bedrift<input value={reference.company ?? ''} onChange={(event) => updateReference(index, 'company', event.target.value)} /></label>
+                      <label>Telefon<input value={reference.phone ?? ''} onChange={(event) => updateReference(index, 'phone', event.target.value)} /></label>
+                      <label>E-post<input type="email" value={reference.email ?? ''} onChange={(event) => updateReference(index, 'email', event.target.value)} /></label>
+                      <label className="field-wide">Fritekst <small>For eksempel «Oppgis på forespørsel»</small><input value={reference.text ?? ''} onChange={(event) => updateReference(index, 'text', event.target.value)} /></label>
+                    </div>
+                  ))}
+                </div>
+
                 <div className="panel-section">
                   <h3>Hovedfelt</h3>
                   <p className="section-help">Velg hva som skal vises i hoveddelen og endre rekkefølgen</p>
                   <div className="section-manager">{cv.sectionOrder.map((section, index) => <div key={section}><label><input type="checkbox" checked={!cv.hiddenSections.includes(section)} onChange={() => toggleSection(section)} /><span>{sectionLabel(section)}</span></label><span><button onClick={() => moveSection('main', index, -1)} aria-label={`Flytt ${sectionLabel(section)} opp`}>↑</button><button onClick={() => moveSection('main', index, 1)} aria-label={`Flytt ${sectionLabel(section)} ned`}>↓</button>{section.startsWith('custom-') && <button onClick={() => removeCustomSection(section)} aria-label={`Slett ${sectionLabel(section)}`}><Trash2 /></button>}</span></div>)}</div>
                 </div>
+
                 <div className="panel-section">
                   <h3>Sidefelt</h3>
                   <p className="section-help">Kontakt, lister og egne rekker langs siden</p>
                   <div className="section-manager">{cv.sidebarOrder.map((section, index) => <div key={section}><label><input type="checkbox" checked={!cv.hiddenSections.includes(section)} onChange={() => toggleSection(section)} /><span>{sectionLabel(section)}</span></label><span><button onClick={() => moveSection('sidebar', index, -1)} aria-label={`Flytt ${sectionLabel(section)} opp`}>↑</button><button onClick={() => moveSection('sidebar', index, 1)} aria-label={`Flytt ${sectionLabel(section)} ned`}>↓</button>{section.startsWith('custom-') && <button onClick={() => removeCustomSection(section)} aria-label={`Slett ${sectionLabel(section)}`}><Trash2 /></button>}</span></div>)}</div>
                   <div className="contact-options"><b>Felter i Kontakt</b>{([['email', 'E-post'], ['phone', 'Telefon'], ['location', 'Sted'], ['website', 'Nettside eller LinkedIn']] as const).map(([id, label]) => <label key={id}><input type="checkbox" checked={!cv.hiddenContactFields.includes(id)} onChange={() => toggleContactField(id)} />{label}</label>)}</div>
                 </div>
+
                 <div className="panel-section">
                   <h3>Rader og innhold</h3>
                   {([
                     ['skills', 'Kompetanse', 'Ny kompetanse'],
                     ['languages', 'Språk', 'Nytt språk og nivå'],
-                    ['references', 'Referanser', 'Navn, rolle og kontakt'],
-                  ] as const).map(([key, label, placeholder]) => <div className="list-editor" key={key}><div><b>{label}</b><button onClick={() => updateList(key, [...cv[key], placeholder])}><Plus /> Ny rad</button></div>{cv[key].map((item, index) => <span key={`${key}-${index}`}><small>{item}</small><button onClick={() => updateList(key, cv[key].filter((_, itemIndex) => itemIndex !== index))} aria-label={`Slett ${label.toLowerCase()} ${index + 1}`}><X /></button></span>)}</div>)}
-                  {cv.customSections.map((section) => <div className="list-editor" key={section.id}><div><b>{section.title} <small>{section.placement === 'sidebar' ? 'Sidefelt' : 'Hovedfelt'}</small></b><button onClick={() => setCv({ ...cv, customSections: cv.customSections.map((item) => item.id === section.id ? { ...item, items: [...item.items, 'Ny rad'] } : item) })}><Plus /> Ny rad</button></div>{section.items.map((item, index) => <span key={`${section.id}-${index}`}><small>{item}</small><button onClick={() => setCv({ ...cv, customSections: cv.customSections.map((entry) => entry.id === section.id ? { ...entry, items: entry.items.filter((_, itemIndex) => itemIndex !== index) } : entry) })} aria-label={`Slett rad ${index + 1} fra ${section.title}`}><X /></button></span>)}</div>)}
+                  ] as const).map(([key, label, placeholder]) => <div className="list-editor" key={key}><div><b>{label}</b><button onClick={() => updateCv({ ...cv, [key]: [...cv[key], placeholder] })}><Plus /> Ny rad</button></div>{cv[key].map((item, index) => <span key={`${key}-${index}`}><small>{item}</small><button onClick={() => updateCv({ ...cv, [key]: cv[key].filter((_, itemIndex) => itemIndex !== index) })} aria-label={`Slett ${label.toLowerCase()} ${index + 1}`}><X /></button></span>)}</div>)}
+                  {cv.customSections.map((section) => <div className="list-editor" key={section.id}><div><b>{section.title} <small>{section.placement === 'sidebar' ? 'Sidefelt' : 'Hovedfelt'}</small></b><button onClick={() => updateCv({ ...cv, customSections: cv.customSections.map((item) => item.id === section.id ? { ...item, items: [...item.items, 'Ny rad'] } : item) })}><Plus /> Ny rad</button></div>{section.items.map((item, index) => <span key={`${section.id}-${index}`}><small>{item}</small><button onClick={() => updateCv({ ...cv, customSections: cv.customSections.map((entry) => entry.id === section.id ? { ...entry, items: entry.items.filter((_, itemIndex) => itemIndex !== index) } : entry) })} aria-label={`Slett rad ${index + 1} fra ${section.title}`}><X /></button></span>)}</div>)}
                 </div>
+
                 <div className="panel-section">
                   <h3>Ny seksjon</h3>
                   <div className="new-section-form"><input value={newSectionTitle} onChange={(event) => setNewSectionTitle(event.target.value)} placeholder="For eksempel kurs" /><select value={newSectionPlacement} onChange={(event) => setNewSectionPlacement(event.target.value as 'main' | 'sidebar')}><option value="sidebar">Sidefelt</option><option value="main">Hovedfelt</option></select><button onClick={() => addCustomSection(newSectionTitle, newSectionPlacement)} disabled={!newSectionTitle.trim()}><Plus /> Legg til</button></div>
                   <div className="section-suggestions"><small>Forslag</small>{['Kurs', 'Sertifiseringer', 'Prosjekter', 'Frivillig arbeid', 'Førerkort', 'Publikasjoner'].map((title) => <button key={title} onClick={() => addCustomSection(title, newSectionPlacement)}>{title}</button>)}</div>
                 </div>
-                <button className="reset-button" onClick={() => { setCv(cloneDefault()); setNotice('Eksempelinnholdet er gjenopprettet.') }}><RotateCcw /> Gjenopprett eksempel</button>
+
+                <button className="reset-button" onClick={() => { updateCv(cloneDefault()); setNotice('Eksempelinnholdet er gjenopprettet.') }}><RotateCcw /> Gjenopprett eksempel</button>
               </>
             )}
+
             {tab === 'mal' && (
               <>
                 <div className="panel-heading"><span>Utseende</span><h2>Velg en mal</h2><p>Innholdet ditt beholdes når du bytter.</p></div>
@@ -520,9 +677,30 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
                 <div className="theme-picker">
                   {colorThemes.map((item) => <button key={item.id} className={theme === item.id ? 'selected' : ''} onClick={() => setTheme(item.id)} aria-label={`Velg fargetema ${item.name}`}><span style={{ background: item.sidebar }} /><i style={{ background: item.accent }} /><b style={{ background: item.highlight }} />{item.name}{theme === item.id && <Check />}</button>)}
                 </div>
+
+                <div className="panel-section">
+                  <h3>Typografi og avstand</h3>
+                  <p className="section-help">CV-standard: Body 10.5 pt · Overskrift 14 pt · Navn 22 pt · Metadata 9.5 pt · Linjeavstand 1.1 · Marg 20 mm</p>
+                  <label className="field-label">Skriftstørrelse
+                    <select value={cv.appearance.typeScale} onChange={(event) => updateCv({ ...cv, appearance: { ...cv.appearance, typeScale: event.target.value as TypeScaleId } })}>
+                      {Object.entries(typeScales).map(([id, scale]) => <option key={id} value={id}>{scale.label} · {scale.note}</option>)}
+                    </select>
+                  </label>
+                  <label className="field-label">Avstand
+                    <select value={cv.appearance.spaceScale} onChange={(event) => updateCv({ ...cv, appearance: { ...cv.appearance, spaceScale: event.target.value as SpaceScaleId } })}>
+                      {Object.entries(spaceScales).map(([id, scale]) => <option key={id} value={id}>{scale.label} · {scale.note}</option>)}
+                    </select>
+                  </label>
+                  <label className="field-label">Sidemarg ({marginRange.min}-{marginRange.max} mm)
+                    <input type="range" min={marginRange.min} max={marginRange.max} value={cv.appearance.margin} onChange={(event) => updateCv({ ...cv, appearance: { ...cv.appearance, margin: Number(event.target.value) } })} />
+                    <small>{cv.appearance.margin} mm</small>
+                  </label>
+                </div>
+
                 <div className="template-sources"><b>Standardmaler og kilder</b>{templates.filter((item) => item.sourceUrl).map((item) => <a href={item.sourceUrl} target="_blank" rel="noreferrer" key={item.id}>{item.name}<small>{item.source}</small></a>)}</div>
               </>
             )}
+
             {tab === 'ai' && (
               <>
                 <div className="panel-heading"><span>Ansettbar AI</span><h2>Hva kan løfte CV-en?</h2><p>Lokal analyse basert på valgt bransje og NAVs råd.</p></div>
@@ -537,7 +715,7 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
         </aside>
         <section className="preview-stage">
           <div className="preview-label"><Eye /> Direkte forhåndsvisning <span>Klikk på tekst for å redigere</span></div>
-          <div className="cv-scale"><CvPreview data={cv} template={template} theme={theme} onChange={setCv} /></div>
+          <div className="cv-scale"><CvPreview data={cv} template={template} theme={theme} onChange={updateCv} /></div>
         </section>
       </div>
     </div>

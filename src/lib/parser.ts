@@ -1,4 +1,4 @@
-import type { CvData, Education, Experience } from '../types'
+import type { CvData, Education, Experience, Reference } from '../types'
 
 const sectionAliases: Record<string, string> = {
   profil: 'summary',
@@ -117,6 +117,11 @@ const extractPhone = (lines: string[]) => {
 
 const isGenericHeading = (line: string) =>
   line.length <= 45 && /\p{L}/u.test(line) && line === line.toLocaleUpperCase('nb-NO')
+
+const toReference = (line: string, index: number): Reference => ({
+  id: `import-ref-${index}`,
+  text: stripBullet(line),
+})
 
 const isName = (line: string) =>
   !hasBullet(line) && !/[:@,|–—]/.test(line) && /^[A-ZÆØÅ][\p{L}'-]+(?:\s+[A-ZÆØÅ][\p{L}'-]+){1,3}$/u.test(line)
@@ -250,7 +255,7 @@ export function parseResume(text: string, fallback: CvData): CvData {
       ? buckets.skills.flatMap((line) => stripBullet(line).split(/[,;|]/)).map((skill) => skill.trim()).filter(Boolean).slice(0, 14)
       : fallback.skills,
     languages: buckets.languages.length ? buckets.languages.map(stripBullet).slice(0, 6) : fallback.languages,
-    references: buckets.references.length ? buckets.references.map(stripBullet).slice(0, 6) : fallback.references,
+    references: buckets.references.length ? buckets.references.map(toReference).slice(0, 6) : fallback.references,
     experience: experience.length ? experience.slice(0, 8) : fallback.experience,
     education: education.length ? education.slice(0, 5) : fallback.education,
   }

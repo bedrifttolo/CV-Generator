@@ -16,6 +16,7 @@ export type Experience = {
   company: string
   period: string
   bullets: string[]
+  companyLogo?: string
 }
 
 export type Education = {
@@ -25,11 +26,44 @@ export type Education = {
   period: string
 }
 
+export type Project = {
+  id: string
+  title: string
+  subtitle?: string
+  period?: string
+  description?: string
+  technologies?: string[]
+  url?: string
+  githubUrl?: string
+  image?: string
+}
+
+export type Reference = {
+  id: string
+  name?: string
+  role?: string
+  company?: string
+  phone?: string
+  email?: string
+  text?: string
+}
+
+export type ReferencePlacement = 'hidden' | 'sidebar' | 'main'
+
 export type CustomSection = {
   id: string
   title: string
   items: string[]
   placement: 'main' | 'sidebar'
+}
+
+export type TypeScaleId = 'kompakt' | 'standard' | 'stor'
+export type SpaceScaleId = 'kompakt' | 'standard' | 'luftig'
+
+export type CvAppearance = {
+  typeScale: TypeScaleId
+  spaceScale: SpaceScaleId
+  margin: number
 }
 
 export type CvData = {
@@ -43,14 +77,17 @@ export type CvData = {
   skills: string[]
   experience: Experience[]
   education: Education[]
+  projects: Project[]
   languages: string[]
-  references: string[]
+  references: Reference[]
+  referencePlacement: ReferencePlacement
   customSections: CustomSection[]
   hiddenSections: string[]
   hiddenContactFields: string[]
   sidebarOrder: string[]
   photo: string
   sectionOrder: string[]
+  appearance: CvAppearance
 }
 
 export type CoachFinding = {

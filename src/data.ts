@@ -1,5 +1,54 @@
+import type { CSSProperties } from 'react'
 import profileUrl from '../assets/avatar-placeholder.svg'
-import type { CvData, Industry, ThemeId } from './types'
+import type { CvAppearance, CvData, Industry, SpaceScaleId, ThemeId, TypeScaleId } from './types'
+
+export const typeScales: Record<TypeScaleId, {
+  label: string
+  note: string
+  name: number
+  title: number
+  heading: number
+  body: number
+  secondary: number
+  meta: number
+}> = {
+  kompakt: { label: 'Kompakt', note: 'Body 10 pt · Overskrift 13 pt · Navn 20 pt', name: 20, title: 11, heading: 13, body: 10, secondary: 9.5, meta: 9 },
+  standard: { label: 'Standard', note: 'Body 10.5 pt · Overskrift 14 pt · Navn 22 pt', name: 22, title: 11.5, heading: 14, body: 10.5, secondary: 10, meta: 9.5 },
+  stor: { label: 'Stor', note: 'Body 11.5 pt · Overskrift 15.5 pt · Navn 24 pt', name: 24, title: 12, heading: 15.5, body: 11.5, secondary: 11, meta: 10 },
+}
+
+export const spaceScales: Record<SpaceScaleId, { label: string; note: string; factor: number; lineHeight: number }> = {
+  kompakt: { label: 'Kompakt', note: 'Mest innhold per side', factor: 0.8, lineHeight: 1.05 },
+  standard: { label: 'Standard', note: 'Linjeavstand 1.1', factor: 1, lineHeight: 1.1 },
+  luftig: { label: 'Luftig', note: 'Mer luft mellom seksjoner', factor: 1.3, lineHeight: 1.25 },
+}
+
+export const defaultAppearance: CvAppearance = { typeScale: 'standard', spaceScale: 'standard', margin: 20 }
+export const marginRange = { min: 15, max: 25 }
+
+export function cvStyleVars(appearance: CvAppearance | undefined): CSSProperties {
+  const type = typeScales[appearance?.typeScale ?? 'standard'] ?? typeScales.standard
+  const space = spaceScales[appearance?.spaceScale ?? 'standard'] ?? spaceScales.standard
+  const margin = Math.min(marginRange.max, Math.max(marginRange.min, appearance?.margin ?? defaultAppearance.margin))
+  const step = (value: number) => `${Number((value * space.factor).toFixed(2))}pt`
+  return {
+    '--cv-font-name': `${type.name}pt`,
+    '--cv-font-title': `${type.title}pt`,
+    '--cv-font-heading': `${type.heading}pt`,
+    '--cv-font-body': `${type.body}pt`,
+    '--cv-font-secondary': `${type.secondary}pt`,
+    '--cv-font-meta': `${type.meta}pt`,
+    '--cv-line-height': String(space.lineHeight),
+    '--cv-space-xs': step(3),
+    '--cv-space-sm': step(6),
+    '--cv-space-md': step(10),
+    '--cv-space-lg': step(14),
+    '--cv-space-xl': step(18),
+    '--cv-margin': `${margin}mm`,
+    '--cv-margin-tight': `${Number((margin * 0.68).toFixed(2))}mm`,
+    '--cv-margin-sidebar': `${Number(Math.min(16, Math.max(11, margin * 0.72)).toFixed(2))}mm`,
+  } as CSSProperties
+}
 
 export const defaultCv: CvData = {
   name: 'Kari Nordmann',
@@ -47,14 +96,28 @@ export const defaultCv: CvData = {
       period: '2017 til 2020',
     },
   ],
+  projects: [
+    {
+      id: 'prj-1',
+      title: 'Digital onboarding',
+      subtitle: 'Prosjektleder',
+      period: '2024',
+      description: 'Ledet et tverrfaglig team som gjorde en manuell velkomstprosess digital. Ny løsning kuttet behandlingstiden fra fem dager til én.',
+      technologies: ['Prosjektledelse', 'Tjenestedesign', 'Power BI'],
+      url: '',
+      githubUrl: '',
+    },
+  ],
   languages: ['Norsk, morsmål', 'Engelsk, godt nivå'],
-  references: ['Oppgis på forespørsel'],
+  references: [{ id: 'ref-1', text: 'Oppgis på forespørsel' }],
+  referencePlacement: 'sidebar',
   customSections: [],
   hiddenSections: [],
   hiddenContactFields: [],
   sidebarOrder: ['contact', 'side-skills', 'languages', 'references'],
   photo: profileUrl,
-  sectionOrder: ['summary', 'experience', 'education', 'skills'],
+  sectionOrder: ['summary', 'experience', 'education', 'projects', 'skills'],
+  appearance: { ...defaultAppearance },
 }
 
 export const blankCv: CvData = {
@@ -84,14 +147,28 @@ export const blankCv: CvData = {
       period: 'År til år',
     },
   ],
+  projects: [
+    {
+      id: 'blank-prj-1',
+      title: 'Prosjektnavn',
+      subtitle: 'Rollen din i prosjektet',
+      period: 'År',
+      description: 'Beskriv kort hva prosjektet gikk ut på, hva du gjorde og hva resultatet ble.',
+      technologies: ['Verktøy eller metode'],
+      url: '',
+      githubUrl: '',
+    },
+  ],
   languages: ['Norsk, nivå', 'Engelsk, nivå'],
-  references: ['Oppgis på forespørsel'],
+  references: [{ id: 'blank-ref-1', text: 'Oppgis på forespørsel' }],
+  referencePlacement: 'sidebar',
   customSections: [],
   hiddenSections: [],
   hiddenContactFields: [],
   sidebarOrder: ['contact', 'side-skills', 'languages', 'references'],
   photo: '',
-  sectionOrder: ['summary', 'experience', 'education', 'skills'],
+  sectionOrder: ['summary', 'experience', 'education', 'projects', 'skills'],
+  appearance: { ...defaultAppearance },
 }
 
 export const industryLabels: Record<Industry, string> = {
