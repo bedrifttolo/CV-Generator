@@ -261,7 +261,7 @@ export function sanitizedCandidate(cv: CvData) {
     currentTitle: cv.title,
     experience: cv.experience.map(({ role, company, period, bullets }) => ({ role, company, period, bullets })),
     education: cv.education.map(({ degree, school, period }) => ({ degree, school, period })),
-    skills: cv.skills,
+    skills: [...cv.skills, ...cv.skillGroups.flatMap((group) => group.items)],
     projects: cv.projects.map(({ title, subtitle, period, description, technologies }) => ({ title, subtitle, period, description, technologies })),
     languages: cv.languages,
   }

@@ -67,6 +67,7 @@ export const defaultCv: CvData = {
     'Microsoft 365',
     'Norsk og engelsk',
   ],
+  skillGroups: [],
   experience: [
     {
       id: 'exp-1',
@@ -130,6 +131,7 @@ export const blankCv: CvData = {
   summary:
     'Skriv 3 til 5 korte linjer om hvem du er faglig, hva du kan bidra med og hvilken type rolle du ønsker.',
   skills: ['Kompetanse 1', 'Kompetanse 2', 'Kompetanse 3'],
+  skillGroups: [],
   experience: [
     {
       id: 'blank-exp-1',

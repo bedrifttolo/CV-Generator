@@ -54,6 +54,7 @@ import type {
   Project,
   Reference,
   ReferencePlacement,
+  SkillGroup,
   SpaceScaleId,
   TemplateId,
   ThemeId,
@@ -377,6 +378,7 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
       setNotice(error instanceof Error ? error.message : 'Filen kunne ikke leses.')
     } finally {
       setImporting(false)
+      if (fileRef.current) fileRef.current.value = ''
     }
   }
 
@@ -418,9 +420,9 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
         ...cv,
         projects: cv.projects.map((entry, index) => (index === editingProjectImage ? { ...entry, image } : entry)),
       })
-      setNotice('Prosjektikonet er oppdatert.')
+      setNotice('Prosjektbildet er oppdatert.')
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Prosjektikonet kunne ikke leses.')
+      setNotice(error instanceof Error ? error.message : 'Prosjektbildet kunne ikke leses.')
     } finally {
       setEditingProjectImage(null)
       if (projectImageRef.current) projectImageRef.current.value = ''
@@ -434,7 +436,7 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
     try {
       const element = document.getElementById('cv-document')
       if (!element) throw new Error('Fant ikke CV-dokumentet.')
-      await exportCvPdf(element, `${cv.name.replace(/[^a-zæøå0-9]+/gi, '_')}_CV.pdf`)
+      await exportCvPdf(element, `${cv.name.replace(/[^a-zæøå0-9]+/gi, '_')}_CV.pdf`, cv)
       setNotice('PDF-en er lastet ned.')
     } catch {
       setNotice('PDF-en kunne ikke lages. Prøv på nytt.')
@@ -541,6 +543,29 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
     })
   }
 
+  const updateExperience = (index: number, patch: Partial<CvData['experience'][number]>) => {
+    updateCv({
+      ...cv,
+      experience: cv.experience.map((entry, itemIndex) => (itemIndex === index ? { ...entry, ...patch } : entry)),
+    })
+  }
+
+  const addSkillGroup = () => {
+    const group: SkillGroup = { id: newId('skill-group'), title: 'Programmeringsspråk', items: ['Java', 'Python'] }
+    updateCv({
+      ...cv,
+      skillGroups: [...cv.skillGroups, group],
+      hiddenSections: cv.hiddenSections.filter((section) => section !== 'side-skills'),
+    })
+  }
+
+  const updateSkillGroup = (index: number, patch: Partial<SkillGroup>) => {
+    updateCv({
+      ...cv,
+      skillGroups: cv.skillGroups.map((group, itemIndex) => (itemIndex === index ? { ...group, ...patch } : group)),
+    })
+  }
+
   return (
     <div className="builder-shell">
       <div className="builder-topbar">
@@ -561,7 +586,7 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
                 <input ref={fileRef} type="file" accept=".pdf,.docx,.txt" hidden onChange={(event) => importFile(event.target.files?.[0])} />
                 <input ref={photoRef} type="file" accept={acceptedImageTypes} aria-label="Velg profilbilde" hidden onChange={(event) => changePhoto(event.target.files?.[0])} />
                 <input ref={experienceLogoRef} type="file" accept={acceptedImageTypes} aria-label="Velg bedriftslogo" hidden onChange={(event) => changeExperienceLogo(event.target.files?.[0])} />
-                <input ref={projectImageRef} type="file" accept={acceptedImageTypes} aria-label="Velg prosjektikon" hidden onChange={(event) => changeProjectImage(event.target.files?.[0])} />
+                <input ref={projectImageRef} type="file" accept={acceptedImageTypes} aria-label="Velg prosjektbilde" hidden onChange={(event) => changeProjectImage(event.target.files?.[0])} />
 
                 <div className="start-choice" aria-label="Velg hvordan du vil starte">
                   <button onClick={() => {
@@ -581,7 +606,7 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
                   <div className="panel-section-head"><h3>Erfaring</h3><button onClick={() => updateCv({ ...cv, experience: [...cv.experience, { id: newId('exp'), role: 'Ny stilling', company: 'Arbeidsgiver', period: 'År til år', bullets: ['Beskriv et konkret ansvar eller resultat.'], companyLogo: '' }] })}><Plus /> Legg til</button></div>
                   <div className="reorder-list">
                     {cv.experience.map((entry, index) => (
-                      <article key={entry.id}>
+                      <article className="experience-editor-card" key={entry.id}>
                         <GripVertical />
                         {entry.companyLogo && <img className="editor-item-image" src={entry.companyLogo} alt="" aria-hidden="true" />}
                         <div>
@@ -589,6 +614,20 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
                           <div className="editor-media-actions">
                             <button onClick={() => { setEditingExperienceLogo(index); experienceLogoRef.current?.click() }}><ImagePlus /> {entry.companyLogo ? 'Bytt logo' : 'Bedriftslogo (valgfritt)'}</button>
                             {entry.companyLogo && <button onClick={() => updateCv({ ...cv, experience: cv.experience.map((item, itemIndex) => itemIndex === index ? { ...item, companyLogo: '' } : item) })}><X /> Fjern</button>}
+                          </div>
+                          <div className="experience-fields">
+                            <label>Stillingstittel<input value={entry.role} onChange={(event) => updateExperience(index, { role: event.target.value })} /></label>
+                            <label>Arbeidsgiver<input value={entry.company} onChange={(event) => updateExperience(index, { company: event.target.value })} /></label>
+                            <label className="field-wide">Periode<input value={entry.period} onChange={(event) => updateExperience(index, { period: event.target.value })} /></label>
+                            <div className="bullet-editor field-wide">
+                              <div><b>Punktvis forklaring</b><button onClick={() => updateExperience(index, { bullets: [...entry.bullets, 'Nytt ansvar eller resultat'] })}><Plus /> Nytt punkt</button></div>
+                              {entry.bullets.map((bullet, bulletIndex) => (
+                                <div className="bullet-row" key={`${entry.id}-editor-bullet-${bulletIndex}`}>
+                                  <textarea aria-label={`Erfaringspunkt ${bulletIndex + 1}`} rows={2} value={bullet} onChange={(event) => updateExperience(index, { bullets: entry.bullets.map((item, itemIndex) => itemIndex === bulletIndex ? event.target.value : item) })} />
+                                  <button onClick={() => updateExperience(index, { bullets: entry.bullets.filter((_, itemIndex) => itemIndex !== bulletIndex) })} aria-label={`Slett erfaringspunkt ${bulletIndex + 1}`}><X /></button>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         </div>
                         <span>
@@ -623,7 +662,7 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
                         <div>
                           <b>{entry.title || 'Uten navn'}</b><small>{entry.subtitle || 'Kort undertittel'}</small>
                           <div className="editor-media-actions">
-                            <button onClick={() => { setEditingProjectImage(index); projectImageRef.current?.click() }}><ImagePlus /> {entry.image ? 'Bytt ikon' : 'Prosjektikon (valgfritt)'}</button>
+                            <button onClick={() => { setEditingProjectImage(index); projectImageRef.current?.click() }}><ImagePlus /> {entry.image ? 'Bytt bilde' : 'Prosjektbilde (valgfritt)'}</button>
                             {entry.image && <button onClick={() => updateProject(index, 'image', '')}><X /> Fjern</button>}
                           </div>
                           <div className="project-fields">
@@ -701,6 +740,26 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
                     ['skills', 'Kompetanse', 'Ny kompetanse'],
                     ['languages', 'Språk', 'Nytt språk og nivå'],
                   ] as const).map(([key, label, placeholder]) => <div className="list-editor" key={key}><div><b>{label}</b><button onClick={() => updateCv({ ...cv, [key]: [...cv[key], placeholder] })}><Plus /> Ny rad</button></div>{cv[key].map((item, index) => <span key={`${key}-${index}`}><small>{item}</small><button onClick={() => updateCv({ ...cv, [key]: cv[key].filter((_, itemIndex) => itemIndex !== index) })} aria-label={`Slett ${label.toLowerCase()} ${index + 1}`}><X /></button></span>)}</div>)}
+                  <div className="skill-group-editor">
+                    <div className="skill-group-editor-head"><div><b>Underoverskrifter i kompetanse</b><small>For eksempel Programmeringsspråk med Java og Python under.</small></div><button onClick={addSkillGroup}><Plus /> Ny gruppe</button></div>
+                    {cv.skillGroups.map((group, groupIndex) => (
+                      <article key={group.id}>
+                        <div className="skill-group-title">
+                          <label>Underoverskrift<input aria-label={`Underoverskrift ${groupIndex + 1}`} value={group.title} onChange={(event) => updateSkillGroup(groupIndex, { title: event.target.value })} /></label>
+                          <button onClick={() => updateCv({ ...cv, skillGroups: cv.skillGroups.filter((item) => item.id !== group.id) })} aria-label={`Slett kompetansegruppe ${groupIndex + 1}`}><Trash2 /></button>
+                        </div>
+                        <div className="skill-group-items">
+                          {group.items.map((item, itemIndex) => (
+                            <div key={`${group.id}-${itemIndex}`}>
+                              <input aria-label={`${group.title || 'Kompetansegruppe'} punkt ${itemIndex + 1}`} value={item} onChange={(event) => updateSkillGroup(groupIndex, { items: group.items.map((value, index) => index === itemIndex ? event.target.value : value) })} />
+                              <button onClick={() => updateSkillGroup(groupIndex, { items: group.items.filter((_, index) => index !== itemIndex) })} aria-label={`Slett punkt ${itemIndex + 1} fra ${group.title || 'kompetansegruppe'}`}><X /></button>
+                            </div>
+                          ))}
+                          <button className="add-skill-row" onClick={() => updateSkillGroup(groupIndex, { items: [...group.items, 'Ny kompetanse'] })}><Plus /> Ny ferdighet</button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
                   {cv.customSections.map((section) => <div className="list-editor" key={section.id}><div><b>{section.title} <small>{section.placement === 'sidebar' ? 'Sidefelt' : 'Hovedfelt'}</small></b><button onClick={() => updateCv({ ...cv, customSections: cv.customSections.map((item) => item.id === section.id ? { ...item, items: [...item.items, 'Ny rad'] } : item) })}><Plus /> Ny rad</button></div>{section.items.map((item, index) => <span key={`${section.id}-${index}`}><small>{item}</small><button onClick={() => updateCv({ ...cv, customSections: cv.customSections.map((entry) => entry.id === section.id ? { ...entry, items: entry.items.filter((_, itemIndex) => itemIndex !== index) } : entry) })} aria-label={`Slett rad ${index + 1} fra ${section.title}`}><X /></button></span>)}</div>)}
                 </div>
 

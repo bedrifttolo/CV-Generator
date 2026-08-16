@@ -27,7 +27,8 @@ const joinNatural = (items: string[]) => {
 
 export function analyzeCv(data: CvData, industry: Industry, jobText: string): CoachFinding[] {
   const findings: CoachFinding[] = []
-  const allText = `${data.title} ${data.summary} ${data.skills.join(' ')} ${data.experience.flatMap((item) => item.bullets).join(' ')}`.toLowerCase()
+  const groupedSkills = data.skillGroups.flatMap((group) => [group.title, ...group.items])
+  const allText = `${data.title} ${data.summary} ${[...data.skills, ...groupedSkills].join(' ')} ${data.experience.flatMap((item) => item.bullets).join(' ')}`.toLowerCase()
   const measurable = /\b\d+(?:[,.]\d+)?\s*(?:%|kr|mill|timer|dager|brukere|kunder|prosjekter)?\b/i.test(allText)
   const jobWords = jobText.toLowerCase().match(/[a-zæøå]{5,}/g) ?? []
   const uniqueJobWords = [...new Set(jobWords)].filter((word) => !['dette', 'eller', 'etter', 'innen', 'ønsker', 'søker'].includes(word))
@@ -75,13 +76,14 @@ export function analyzeCv(data: CvData, industry: Industry, jobText: string): Co
 export function makeLetter(data: CvData, company: string, role: string, jobText: string): string {
   const jobKeywords = extractJobKeywords(jobText)
   const score = (text: string) => jobKeywords.filter((word) => text.toLowerCase().includes(word)).length
-  const relevantSkills = data.skills
+  const allSkills = [...data.skills, ...data.skillGroups.flatMap((group) => group.items)]
+  const relevantSkills = allSkills
     .map((skill) => ({ skill, score: score(skill) }))
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score)
     .map((item) => item.skill)
   const bestExperience = [...data.experience].sort((a, b) => score(`${b.role} ${b.company} ${b.bullets.join(' ')}`) - score(`${a.role} ${a.company} ${a.bullets.join(' ')}`))[0]
-  const leadSkill = relevantSkills.length ? joinNatural(relevantSkills.slice(0, 3)) : data.skills.slice(0, 3).join(', ')
+  const leadSkill = relevantSkills.length ? joinNatural(relevantSkills.slice(0, 3)) : allSkills.slice(0, 3).join(', ')
   const experienceScore = bestExperience ? score(`${bestExperience.role} ${bestExperience.company} ${bestExperience.bullets.join(' ')}`) : 0
   const background = relevantSkills.length
     ? `kompetansen min innen ${leadSkill}`

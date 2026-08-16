@@ -1,4 +1,7 @@
-import type { CvData, Education, Experience, Reference } from '../types'
+import { decodeCvPdfPayload, fromStructuredImportText, toStructuredImportText } from './cv-payload'
+import { normalizeCv } from './document'
+import { ensurePromiseWithResolvers } from './promise-compat'
+import type { CvData, Education, Experience, Project, Reference, SkillGroup } from '../types'
 
 const sectionAliases: Record<string, string> = {
   profil: 'summary',
@@ -27,17 +30,12 @@ const sectionAliases: Record<string, string> = {
   references: 'references',
   kontakt: 'root',
   contact: 'root',
-  teknologi: 'ignored',
-  'metoder og verktøy': 'ignored',
-  'faglig retning': 'ignored',
-  arbeidsstil: 'ignored',
-  utviklingsmiljø: 'ignored',
-  'tverrfaglig styrke': 'ignored',
   lenker: 'ignored',
   'dokumenterte resultater': 'ignored',
-  'utvalgte prosjekter': 'ignored',
-  prosjekter: 'ignored',
-  projects: 'ignored',
+  'utvalgte prosjekter': 'projects',
+  'mine prosjekter': 'projects',
+  prosjekter: 'projects',
+  projects: 'projects',
   'slik jobber jeg': 'ignored',
 }
 
@@ -46,6 +44,8 @@ const cleanLines = (text: string) =>
     .split(/\r?\n/)
     .map((line) => line.replace(/\s+/g, ' ').trim())
     .filter(Boolean)
+
+let pdfWorker: Worker | null = null
 
 export async function extractFileText(file: File): Promise<string> {
   if (file.size > 10 * 1024 * 1024) throw new Error('Filen er større enn 10 MB.')
@@ -58,40 +58,53 @@ export async function extractFileText(file: File): Promise<string> {
     return result.value
   }
   if (extension === 'pdf') {
+    ensurePromiseWithResolvers()
     const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-      'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
-      import.meta.url,
-    ).toString()
-    const loadingTask = pdfjs.getDocument({ data: await file.arrayBuffer() })
-    const pdf = await loadingTask.promise
-    const pages: string[] = []
-    for (let index = 1; index <= Math.min(pdf.numPages, 8); index += 1) {
-      const page = await pdf.getPage(index)
-      const content = await page.getTextContent()
-      const lines: string[] = []
-      let line = ''
-      let previousY: number | null = null
-      content.items.forEach((item) => {
-        if (!('str' in item) || !item.str.trim()) return
-        const y = item.transform[5]
-        if (previousY !== null && Math.abs(y - previousY) > 2 && line.trim()) {
-          lines.push(line.trim())
-          line = ''
-        }
-        line += `${line ? ' ' : ''}${item.str.trim()}`
-        previousY = y
-        if (item.hasEOL) {
-          lines.push(line.trim())
-          line = ''
-          previousY = null
-        }
-      })
-      if (line.trim()) lines.push(line.trim())
-      pages.push(lines.join('\n'))
+    if (!pdfWorker && typeof Worker !== 'undefined') {
+      pdfWorker = new Worker(new URL('./pdfjs-worker.ts', import.meta.url), { type: 'module' })
     }
-    await loadingTask.destroy()
-    return pages.join('\n')
+    if (pdfWorker) pdfjs.GlobalWorkerOptions.workerPort = pdfWorker
+    const loadingTask = pdfjs.getDocument({ data: await file.arrayBuffer() })
+    try {
+      const pdf = await loadingTask.promise
+      const metadata = await pdf.getMetadata().catch(() => null)
+      const info = metadata?.info as { Subject?: unknown } | undefined
+      const embeddedCv = decodeCvPdfPayload(info?.Subject)
+      if (embeddedCv) return toStructuredImportText(embeddedCv)
+
+      const pages: string[] = []
+      for (let index = 1; index <= Math.min(pdf.numPages, 8); index += 1) {
+        const page = await pdf.getPage(index)
+        const content = await page.getTextContent()
+        const lines: string[] = []
+        let line = ''
+        let previousY: number | null = null
+        content.items.forEach((item) => {
+          if (!('str' in item) || !item.str.trim()) return
+          const y = item.transform[5]
+          if (previousY !== null && Math.abs(y - previousY) > 2 && line.trim()) {
+            lines.push(line.trim())
+            line = ''
+          }
+          line += `${line ? ' ' : ''}${item.str.trim()}`
+          previousY = y
+          if (item.hasEOL) {
+            lines.push(line.trim())
+            line = ''
+            previousY = null
+          }
+        })
+        if (line.trim()) lines.push(line.trim())
+        pages.push(lines.join('\n'))
+      }
+      const extracted = pages.join('\n').trim()
+      if (!extracted) {
+        throw new Error('PDF-en inneholder ikke lesbar tekst. Nye PDF-er fra CVklar kan importeres direkte; for eldre bilde-PDF-er må du bruke originalfilen eller TXT/DOCX.')
+      }
+      return extracted
+    } finally {
+      await loadingTask.destroy()
+    }
   }
   throw new Error('Bruk PDF, DOCX eller TXT.')
 }
@@ -126,7 +139,68 @@ const toReference = (line: string, index: number): Reference => ({
 const isName = (line: string) =>
   !hasBullet(line) && !/[:@,|–—]/.test(line) && /^[A-ZÆØÅ][\p{L}'-]+(?:\s+[A-ZÆØÅ][\p{L}'-]+){1,3}$/u.test(line)
 
+const parseSkills = (lines: string[]) => {
+  const skills: string[] = []
+  const skillGroups: SkillGroup[] = []
+  let activeGroup: SkillGroup | null = null
+
+  lines.forEach((rawLine, index) => {
+    const value = stripBullet(rawLine).replace(/:$/, '').trim()
+    if (!value) return
+    const next = lines[index + 1] ?? ''
+    const startsGroup = !hasBullet(rawLine) && (rawLine.trim().endsWith(':') || hasBullet(next))
+    if (startsGroup) {
+      activeGroup = { id: `import-skill-group-${index}`, title: value, items: [] }
+      skillGroups.push(activeGroup)
+      return
+    }
+
+    const items = value.split(/[,;|]/).map((item) => item.trim()).filter(Boolean)
+    if (hasBullet(rawLine) && activeGroup) activeGroup.items.push(...items)
+    else {
+      activeGroup = null
+      skills.push(...items)
+    }
+  })
+
+  return {
+    skills: skills.slice(0, 30),
+    skillGroups: skillGroups.filter((group) => group.title || group.items.length).slice(0, 12),
+  }
+}
+
+const parseProjects = (lines: string[]): Project[] => {
+  const projects: Project[] = []
+  let active: Project | null = null
+  lines.forEach((rawLine, index) => {
+    const line = stripBullet(rawLine)
+    if (!line) return
+    const period = line.match(periodPattern)?.[0] ?? ''
+    const heading = line.replace(periodPattern, '').replace(/^[,|·\s–—-]+|[,|·\s–—-]+$/g, '').trim()
+    if (!active || period) {
+      if (active) projects.push(active)
+      active = {
+        id: `import-project-${index}`,
+        title: heading || line,
+        period,
+        subtitle: '',
+        description: '',
+        technologies: [],
+      }
+    } else if (!active.subtitle && !hasBullet(rawLine) && line.length < 70) {
+      active.subtitle = line
+    } else {
+      active.description = `${active.description ? `${active.description} ` : ''}${line}`
+    }
+  })
+  if (active) projects.push(active)
+  return projects.filter((project) => project.title || project.description).slice(0, 8)
+}
+
 export function parseResume(text: string, fallback: CvData): CvData {
+  const structured = fromStructuredImportText(text)
+  if (structured) return normalizeCv(structured, fallback)
+
   const lines = cleanLines(text)
   if (!lines.length) throw new Error('Vi fant ingen lesbar tekst i filen.')
 
@@ -138,6 +212,7 @@ export function parseResume(text: string, fallback: CvData): CvData {
     skills: [],
     languages: [],
     references: [],
+    projects: [],
     ignored: [],
   }
   let current = 'root'
@@ -146,7 +221,7 @@ export function parseResume(text: string, fallback: CvData): CvData {
     const key = sectionAliases[normalized]
     if (key) current = key
     else if (/^referanser? oppgis/i.test(line)) buckets.references.push(stripBullet(line))
-    else if (isGenericHeading(line)) current = 'ignored'
+    else if (isGenericHeading(line) && current !== 'skills') current = 'ignored'
     else buckets[current].push(line)
   })
 
@@ -242,7 +317,10 @@ export function parseResume(text: string, fallback: CvData): CvData {
   })
   if (activeEducation) education.push(activeEducation)
 
-  return {
+  const parsedSkills = parseSkills(buckets.skills)
+  const projects = parseProjects(buckets.projects)
+
+  return normalizeCv({
     ...fallback,
     name,
     title,
@@ -251,12 +329,12 @@ export function parseResume(text: string, fallback: CvData): CvData {
     location,
     website,
     summary: buckets.summary.map(stripBullet).join(' ') || inferredSummary.join(' ') || fallback.summary,
-    skills: buckets.skills.length
-      ? buckets.skills.flatMap((line) => stripBullet(line).split(/[,;|]/)).map((skill) => skill.trim()).filter(Boolean).slice(0, 14)
-      : fallback.skills,
+    skills: buckets.skills.length ? parsedSkills.skills : fallback.skills,
+    skillGroups: buckets.skills.length ? parsedSkills.skillGroups : fallback.skillGroups,
     languages: buckets.languages.length ? buckets.languages.map(stripBullet).slice(0, 6) : fallback.languages,
     references: buckets.references.length ? buckets.references.map(toReference).slice(0, 6) : fallback.references,
     experience: experience.length ? experience.slice(0, 8) : fallback.experience,
     education: education.length ? education.slice(0, 5) : fallback.education,
-  }
+    projects: projects.length ? projects : fallback.projects,
+  }, fallback)
 }

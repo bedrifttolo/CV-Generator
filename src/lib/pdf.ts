@@ -1,3 +1,6 @@
+import type { CvData } from '../types'
+import { encodeCvPdfPayload } from './cv-payload'
+
 const A4_WIDTH_MM = 210
 const A4_HEIGHT_MM = 297
 
@@ -74,7 +77,7 @@ const waitForImages = async (element: HTMLElement) => {
   }))
 }
 
-export async function exportCvPdf(element: HTMLElement, fileName: string) {
+export async function exportCvPdf(element: HTMLElement, fileName: string, data: CvData) {
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')])
   const captureRoot = element.closest<HTMLElement>('.cv-scale')
   captureRoot?.classList.add('cv-pdf-capture')
@@ -122,6 +125,13 @@ export async function exportCvPdf(element: HTMLElement, fileName: string) {
     }
 
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
+    pdf.setProperties({
+      title: `${data.name} – CV`,
+      subject: encodeCvPdfPayload(data),
+      author: data.name,
+      creator: 'CVklar',
+      keywords: 'CVklar, CV, resume',
+    })
     const pixelScale = canvas.width / width
     const pageCanvas = document.createElement('canvas')
     pageCanvas.width = canvas.width

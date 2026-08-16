@@ -19,6 +19,12 @@ export type Experience = {
   companyLogo?: string
 }
 
+export type SkillGroup = {
+  id: string
+  title: string
+  items: string[]
+}
+
 export type Education = {
   id: string
   degree: string
@@ -75,6 +81,7 @@ export type CvData = {
   website: string
   summary: string
   skills: string[]
+  skillGroups: SkillGroup[]
   experience: Experience[]
   education: Education[]
   projects: Project[]

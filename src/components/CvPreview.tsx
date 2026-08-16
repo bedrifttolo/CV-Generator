@@ -2,7 +2,7 @@ import type { CSSProperties, FocusEvent, ReactNode } from 'react'
 import { ExternalLink, Github, Mail, MapPin, Phone } from 'lucide-react'
 import { colorThemes, cvStyleVars } from '../data'
 import { hasProjectContent, hasReferenceContent } from '../lib/document'
-import type { CvData, Project, Reference, TemplateId, ThemeId } from '../types'
+import type { CvData, Project, Reference, SkillGroup, TemplateId, ThemeId } from '../types'
 
 type Props = {
   data: CvData
@@ -101,6 +101,16 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
   const updateListItem = (key: 'skills' | 'languages', index: number, value: string) => {
     update(key, data[key].map((item, itemIndex) => (itemIndex === index ? value : item)))
   }
+  const updateSkillGroup = (index: number, key: keyof SkillGroup, value: string) => {
+    update('skillGroups', data.skillGroups.map((group, itemIndex) => (itemIndex === index ? { ...group, [key]: value } : group)))
+  }
+  const updateSkillGroupItem = (groupIndex: number, itemIndex: number, value: string) => {
+    update('skillGroups', data.skillGroups.map((group, index) =>
+      index === groupIndex
+        ? { ...group, items: group.items.map((item, skillIndex) => (skillIndex === itemIndex ? value : item)) }
+        : group,
+    ))
+  }
   const updateCustomSection = (id: string, title?: string, itemIndex?: number, value?: string) => {
     update('customSections', data.customSections.map((section) => {
       if (section.id !== id) return section
@@ -135,6 +145,13 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
   )
   const visibleEducation = data.education.filter((entry) => Boolean(entry.degree.trim() || entry.school.trim() || entry.period.trim()))
   const visibleSkills = data.skills.map((value, index) => ({ value, index })).filter(({ value }) => value.trim())
+  const visibleSkillGroups = data.skillGroups
+    .map((group, index) => ({
+      group,
+      index,
+      items: group.items.map((value, itemIndex) => ({ value, itemIndex })).filter(({ value }) => value.trim()),
+    }))
+    .filter(({ group, items }) => group.title.trim() || items.length)
   const visibleLanguages = data.languages.map((value, index) => ({ value, index })).filter(({ value }) => value.trim())
   const contactFields = ['email', 'phone', 'location', 'website'].filter(
     (field) => !data.hiddenContactFields.includes(field) && String(data[field as keyof CvData] ?? '').trim(),
@@ -255,14 +272,35 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
         </div>
       </section>
     )
+  } else {
+    sections.projects = (
+      <section className="cv-section cv-empty-section" key="projects">
+        <h2>Mine prosjekter</h2>
+        <p>Ingen prosjekter ennå – legg til et prosjekt i innholdspanelet.</p>
+      </section>
+    )
   }
-  if (visibleSkills.length) {
+  if (visibleSkills.length || visibleSkillGroups.length) {
     sections.skills = (
       <section className="cv-section cv-skills-main" key="skills">
         <h2>Kompetanse</h2>
-        <div className="cv-chips">
-          {visibleSkills.map(({ value, index }) => (
-            <Editable key={`${value}-${index}`} onCommit={(next) => updateListItem('skills', index, next)}>{value}</Editable>
+        <div className="cv-skill-collections">
+          {visibleSkills.length > 0 && (
+            <div className="cv-chips">
+              {visibleSkills.map(({ value, index }) => (
+                <Editable key={`${value}-${index}`} onCommit={(next) => updateListItem('skills', index, next)}>{value}</Editable>
+              ))}
+            </div>
+          )}
+          {visibleSkillGroups.map(({ group, index, items }) => (
+            <div className="cv-skill-group-main" data-cv-block key={group.id}>
+              {group.title && <h3><Editable onCommit={(value) => updateSkillGroup(index, 'title', value)}>{group.title}</Editable></h3>}
+              <div className="cv-chips">
+                {items.map(({ value, itemIndex }) => (
+                  <Editable key={`${group.id}-${itemIndex}`} onCommit={(next) => updateSkillGroupItem(index, itemIndex, next)}>{value}</Editable>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </section>
@@ -309,11 +347,17 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
       </div>
     )
   }
-  if (visibleSkills.length) {
+  if (visibleSkills.length || visibleSkillGroups.length) {
     sidebarSections['side-skills'] = (
       <div className="cv-side-block" key="side-skills">
         <h2>Kompetanse</h2>
-        <ul>{visibleSkills.map(({ value, index }) => <li key={`${value}-${index}`}><Editable onCommit={(next) => updateListItem('skills', index, next)}>{value}</Editable></li>)}</ul>
+        {visibleSkills.length > 0 && <ul>{visibleSkills.map(({ value, index }) => <li key={`${value}-${index}`}><Editable onCommit={(next) => updateListItem('skills', index, next)}>{value}</Editable></li>)}</ul>}
+        {visibleSkillGroups.map(({ group, index, items }) => (
+          <div className="cv-skill-group" data-cv-block key={group.id}>
+            {group.title && <h3><Editable onCommit={(value) => updateSkillGroup(index, 'title', value)}>{group.title}</Editable></h3>}
+            <ul>{items.map(({ value, itemIndex }) => <li key={`${group.id}-${itemIndex}`}><Editable onCommit={(next) => updateSkillGroupItem(index, itemIndex, next)}>{value}</Editable></li>)}</ul>
+          </div>
+        ))}
       </div>
     )
   }
