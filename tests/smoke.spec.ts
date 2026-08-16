@@ -103,6 +103,72 @@ test('en personlig CV lagres lokalt og beholdes etter reload', async ({ page }, 
   await expect(document).toContainText('Denne teksten skal ligge trygt i nettleseren etter en reload.')
 })
 
+test('CV med stort bilde lagres når localStorage-kvoten er brukt opp', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'Stor lokal dokumentlagring dekkes av desktopmotorene')
+  test.setTimeout(60_000)
+  await page.addInitScript(() => {
+    const originalSetItem = Storage.prototype.setItem
+    Storage.prototype.setItem = function setItem(key: string, value: string) {
+      if (this === window.localStorage && key === 'cvklar-document') {
+        throw new DOMException('Lagringskvoten er brukt opp.', 'QuotaExceededError')
+      }
+      return originalSetItem.call(this, key, value)
+    }
+  })
+
+  const { createCanvas } = await import('@napi-rs/canvas')
+  const source = createCanvas(820, 820)
+  const sourceContext = source.getContext('2d')
+  const pixels = sourceContext.createImageData(source.width, source.height)
+  let seed = 17
+  for (let index = 0; index < pixels.data.length; index += 4) {
+    seed = (seed * 16_807) % 2_147_483_647
+    pixels.data[index] = seed & 255
+    pixels.data[index + 1] = (seed >> 8) & 255
+    pixels.data[index + 2] = (seed >> 16) & 255
+    pixels.data[index + 3] = 255
+  }
+  sourceContext.putImageData(pixels, 0, 0)
+  const largeImage = source.toBuffer('image/png')
+  expect(largeImage.byteLength).toBeGreaterThan(1_000_000)
+  expect(largeImage.byteLength).toBeLessThan(6 * 1024 * 1024)
+
+  await page.goto('/cv')
+  const document = page.locator('#cv-document')
+  const name = document.locator('.cv-header h1 .editable')
+  await name.fill('Stor lokal CV')
+  await name.blur()
+  const photoChooser = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Bytt profilbilde' }).click()
+  await (await photoChooser).setFiles({ name: 'stort-bilde.png', mimeType: 'image/png', buffer: largeImage })
+
+  await expect(page.getByText('Lagret lokalt', { exact: true })).toBeVisible({ timeout: 20_000 })
+  await page.getByRole('button', { name: 'Lagre lokalt', exact: true }).click()
+  await expect(page.getByText('CV-en er lagret lokalt i denne nettleseren.')).toBeVisible({ timeout: 20_000 })
+
+  const stored = await page.evaluate(() => new Promise<{ name: string; photoLength: number }>((resolve, reject) => {
+    const open = indexedDB.open('cvklar-local')
+    open.onerror = () => reject(open.error)
+    open.onsuccess = () => {
+      const database = open.result
+      const request = database.transaction('documents', 'readonly').objectStore('documents').get('active-cv')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const snapshot = request.result
+        database.close()
+        resolve({ name: snapshot.cv.name, photoLength: snapshot.cv.photo.length })
+      }
+    }
+  }))
+  expect(stored.name).toBe('Stor lokal CV')
+  expect(stored.photoLength).toBeGreaterThan(1_000_000)
+
+  await page.reload()
+  await expect(document).toContainText('Stor lokal CV')
+  await expect.poll(async () => (await document.locator('.cv-photo').getAttribute('src'))?.length ?? 0).toBeGreaterThan(1_000_000)
+  await expect(page.getByText('Lagret lokalt', { exact: true })).toBeVisible({ timeout: 20_000 })
+})
+
 test('CV-import trekker ut data og PDF kan lastes ned', async ({ page }, testInfo) => {
   await page.addInitScript(() => Reflect.deleteProperty(Promise, 'withResolvers'))
   await page.goto('/')

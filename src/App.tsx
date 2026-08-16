@@ -42,6 +42,7 @@ import {
   templates,
 } from './data'
 import { analyzeCv } from './lib/coach'
+import { loadCvSnapshot, saveCvSnapshot, saveLegacyCvMirror } from './lib/cv-storage'
 import { applyReferencePlacement, newId, normalizeCv } from './lib/document'
 import { acceptedImageTypes, readImageFile } from './lib/image'
 import { JOBS_STORAGE_KEY, LETTERS_STORAGE_KEY, loadCoverLetters, loadJobs } from './lib/jobs'
@@ -69,7 +70,7 @@ type BuilderTab = 'innhold' | 'mal' | 'ai'
 
 const cloneDefault = () => structuredClone(defaultCv)
 const cloneBlank = () => structuredClone(blankCv)
-type CvSaveStatus = 'saved' | 'error'
+type CvSaveStatus = 'saving' | 'saved' | 'error'
 
 function loadCv(): CvData {
   try {
@@ -109,24 +110,48 @@ function App() {
   const [legal, setLegal] = useState<Legal>(null)
   const [mobileMenu, setMobileMenu] = useState(false)
   const [consent, setConsent] = useState(() => localStorage.getItem('cvklar-consent'))
-  const [cvSaveStatus, setCvSaveStatus] = useState<CvSaveStatus>('saved')
+  const [cvSaveStatus, setCvSaveStatus] = useState<CvSaveStatus>('saving')
+  const [cvStorageReady, setCvStorageReady] = useState(false)
+  const saveAttemptRef = useRef(0)
 
-  const saveCvLocally = () => {
+  const saveCvLocally = async () => {
+    const attempt = ++saveAttemptRef.current
+    setCvSaveStatus('saving')
+    const mirror = saveLegacyCvMirror(cv, template, theme)
     try {
-      localStorage.setItem('cvklar-document', JSON.stringify(cv))
-      localStorage.setItem('cvklar-template', template)
-      localStorage.setItem('cvklar-theme', theme)
-      setCvSaveStatus('saved')
+      await saveCvSnapshot({ cv, template, theme, updatedAt: Date.now() })
+      if (attempt === saveAttemptRef.current) setCvSaveStatus('saved')
       return true
     } catch {
-      setCvSaveStatus('error')
-      return false
+      // Små dokumenter kan fortsatt lagres i eldre nettlesere der IndexedDB er
+      // deaktivert. En kopi uten bilder er derimot ikke en fullverdig lagring.
+      const fullySaved = mirror === 'full'
+      if (attempt === saveAttemptRef.current) setCvSaveStatus(fullySaved ? 'saved' : 'error')
+      return fullySaved
     }
   }
 
   useEffect(() => {
-    saveCvLocally()
-  }, [cv, template, theme])
+    let active = true
+    loadCvSnapshot()
+      .then((snapshot) => {
+        if (!active || !snapshot) return
+        setCv(normalizeCv(snapshot.cv, cloneDefault()))
+        setTemplate(snapshot.template)
+        setTheme(snapshot.theme)
+      })
+      .catch(() => {
+        // loadCv har allerede lastet den bakoverkompatible localStorage-kopien.
+      })
+      .finally(() => {
+        if (active) setCvStorageReady(true)
+      })
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    if (cvStorageReady) void saveCvLocally()
+  }, [cv, template, theme, cvStorageReady])
 
   useEffect(() => {
     localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(jobs))
@@ -360,7 +385,7 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme, saveStatus
   theme: ThemeId
   setTheme: (id: ThemeId) => void
   saveStatus: CvSaveStatus
-  onSave: () => boolean
+  onSave: () => Promise<boolean>
 }) {
   const [tab, setTab] = useState<BuilderTab>('innhold')
   const [importing, setImporting] = useState(false)
@@ -464,10 +489,10 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme, saveStatus
     }
   }
 
-  const saveLocally = () => {
-    setNotice(onSave()
+  const saveLocally = async () => {
+    setNotice(await onSave()
       ? 'CV-en er lagret lokalt i denne nettleseren.'
-      : 'Kunne ikke lagre lokalt. Fjern eventuelt store bilder og prøv igjen.')
+      : 'Kunne ikke lagre lokalt. Kontroller at nettleseren tillater lokal lagring.')
   }
 
   const exportPdf = async () => {
@@ -621,10 +646,10 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme, saveStatus
       <div className="builder-topbar">
         <div className="builder-progress"><span className="done">1</span><i /><span className="done">2</span><i /><span>3</span><small>Innhold&nbsp;&nbsp;&nbsp; Utseende&nbsp;&nbsp;&nbsp; Last ned</small></div>
         <span className={`builder-save-status ${saveStatus}`} role="status">
-          {saveStatus === 'saved' ? <Check /> : <X />}
-          {saveStatus === 'saved' ? 'Lagret lokalt' : 'Lagring feilet'}
+          {saveStatus === 'saved' ? <Check /> : saveStatus === 'error' ? <X /> : <Save />}
+          {saveStatus === 'saved' ? 'Lagret lokalt' : saveStatus === 'error' ? 'Lagring feilet' : 'Lagrer lokalt …'}
         </span>
-        <button className="button button-small button-outline builder-save-button" onClick={saveLocally}><Save /> Lagre lokalt</button>
+        <button className="button button-small button-outline builder-save-button" onClick={() => void saveLocally()}><Save /> Lagre lokalt</button>
         <button className="button button-small" onClick={exportPdf} disabled={isExporting}><Download /> {isExporting ? 'Lager PDF …' : 'Last ned PDF'}</button>
       </div>
       <div className="builder-layout">
@@ -984,7 +1009,7 @@ function LegalModal({ type, onClose }: { type: Legal; onClose: () => void }) {
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
       <motion.section className="legal-modal" role="dialog" aria-modal="true" aria-labelledby="legal-title" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} onMouseDown={(event) => event.stopPropagation()}>
         <button className="modal-close" onClick={onClose} aria-label="Lukk"><X /></button>
-        {type === 'privacy' ? <><span className="eyebrow">Sist oppdatert 16. august 2026</span><h2 id="legal-title">Personvernerklæring</h2><p><strong>Kortversjonen:</strong> CV, profilbilde, lagrede stillinger og søknadsbrev lagres i nettleserens lokale lagring. CVklar har ingen konto eller database for disse dokumentene. URL-import og AI-funksjoner er valgfrie og krever serverbehandling.</p><h3>Hva lagres lokalt?</h3><p>CV-data, stillingsoversikt, søknadsstatus, søknadsdatoer og søknadsbrev lagres i localStorage slik at arbeidet ikke forsvinner ved oppdatering. Du kan fjerne dette ved å slette elementene i appen eller tømme nettleserdata.</p><h3>Import av stillinger</h3><p>Når du henter en annonse fra en URL, sendes URL-en til CVklar-serveren. Serveren henter siden, trekker ut ren tekst og returnerer strukturerte stillingsdata. Hvis modellbasert uttrekk er konfigurert, sendes den rensede annonseteksten til AI-tjenesten for strukturering. Hentet HTML kjøres ikke i nettleseren og stillingen lagres ikke i en CVklar-database.</p><h3>Valgfrie AI-funksjoner</h3><p>Når du aktivt bruker en AI-knapp, sendes relevant annonseinnhold og en sanitert kandidatprofil til den konfigurerte AI-tjenesten. Telefonnummer, e-post, bosted, profilbilde og annen kontaktinformasjon utelates. Den lokale CV-coachen og lokalt førsteutkast kan brukes uten denne overføringen.</p><h3>Filer og PDF</h3><p>Opplastede CV-filer leses i nettleseren og sendes ikke til CVklar. PDF genereres lokalt. Profilbilder lagres som en lokal dataadresse.</p><h3>Google-annonser og samtykke</h3><p>Når markedsføringssamtykke er gitt og AdSense er konfigurert, kan Google plassere eller lese informasjonskapsler, bruke IP-adresse og behandle bruksdata for annonselevering og måling. Før aktivering i Norge skal Google Privacy &amp; messaging eller en annen Google-sertifisert CMP være aktivert.</p><h3>Dine rettigheter</h3><p>Lokale dokumenter kontrolleres av deg i nettleseren. Data som behandles av eksterne tjenester håndteres etter deres vilkår og dine samtykkevalg.</p><p className="legal-warning">Dette er et produktutkast, ikke juridisk rådgivning. Legg inn korrekt behandlingsansvarlig, organisasjonsnummer, leverandørliste og kontaktpunkt før kommersiell publisering.</p></> : <><span className="eyebrow">Sist oppdatert 16. august 2026</span><h2 id="legal-title">Brukervilkår</h2><p>CVklar er et skrive-, organiserings- og formateringsverktøy. Du har ansvar for at innholdet du bruker er riktig, lovlig og ditt eget.</p><h3>Stillingsimport</h3><p>Automatisk import kan være ufullstendig eller slutte å fungere når en annonseside endres eller blokkerer tilgang. Kontroller alltid opplysninger og frister mot originalannonsen.</p><h3>AI-råd og utkast</h3><p>Råd og tekstutkast er veiledende og gir ingen garanti for intervju, ansettelse eller et bestemt resultat. Kontroller alltid fakta og tilpass språket før innsending. Ikke bruk forslag som tillegger deg erfaring du ikke har.</p><h3>Tilgjengelighet</h3><p>Tjenesten leveres slik den er. Vi forsøker å gjøre lokal lagring og PDF-eksport pålitelig, men du bør beholde en egen kopi av viktige dokumenter.</p><h3>Akseptabel bruk</h3><p>Ikke bruk tjenesten til å laste opp skadevare, krenke andres rettigheter, utgi deg for å være noen andre eller automatisere misbruk.</p><h3>Reklame</h3><p>Google AdSense-annonser merkes tydelig og påvirker ikke rådene i CV-coachen. Ikke klikk annonser for å støtte tjenesten eller bruk automatiserte klikk.</p><p className="legal-warning">Før kommersiell lansering må vilkårene kvalitetssikres for faktisk foretaksinformasjon, leverandører, betalingsmodell og valgt jurisdiksjon.</p></>}
+        {type === 'privacy' ? <><span className="eyebrow">Sist oppdatert 16. august 2026</span><h2 id="legal-title">Personvernerklæring</h2><p><strong>Kortversjonen:</strong> CV, profilbilde, lagrede stillinger og søknadsbrev lagres i nettleserens lokale lagring. CVklar har ingen konto eller database for disse dokumentene. URL-import og AI-funksjoner er valgfrie og krever serverbehandling.</p><h3>Hva lagres lokalt?</h3><p>CV-data og bilder lagres i nettleserens lokale dokumentlager (IndexedDB), med en mindre bakoverkompatibel kopi i localStorage når det er plass. Stillingsoversikt, søknadsstatus, søknadsdatoer og søknadsbrev lagres også lokalt, slik at arbeidet ikke forsvinner ved oppdatering. Du kan fjerne dette ved å slette elementene i appen eller tømme nettleserdata.</p><h3>Import av stillinger</h3><p>Når du henter en annonse fra en URL, sendes URL-en til CVklar-serveren. Serveren henter siden, trekker ut ren tekst og returnerer strukturerte stillingsdata. Hvis modellbasert uttrekk er konfigurert, sendes den rensede annonseteksten til AI-tjenesten for strukturering. Hentet HTML kjøres ikke i nettleseren og stillingen lagres ikke i en CVklar-database.</p><h3>Valgfrie AI-funksjoner</h3><p>Når du aktivt bruker en AI-knapp, sendes relevant annonseinnhold og en sanitert kandidatprofil til den konfigurerte AI-tjenesten. Telefonnummer, e-post, bosted, profilbilde og annen kontaktinformasjon utelates. Den lokale CV-coachen og lokalt førsteutkast kan brukes uten denne overføringen.</p><h3>Filer og PDF</h3><p>Opplastede CV-filer leses i nettleseren og sendes ikke til CVklar. PDF genereres lokalt. Profilbilder lagres som en lokal dataadresse.</p><h3>Google-annonser og samtykke</h3><p>Når markedsføringssamtykke er gitt og AdSense er konfigurert, kan Google plassere eller lese informasjonskapsler, bruke IP-adresse og behandle bruksdata for annonselevering og måling. Før aktivering i Norge skal Google Privacy &amp; messaging eller en annen Google-sertifisert CMP være aktivert.</p><h3>Dine rettigheter</h3><p>Lokale dokumenter kontrolleres av deg i nettleseren. Data som behandles av eksterne tjenester håndteres etter deres vilkår og dine samtykkevalg.</p><p className="legal-warning">Dette er et produktutkast, ikke juridisk rådgivning. Legg inn korrekt behandlingsansvarlig, organisasjonsnummer, leverandørliste og kontaktpunkt før kommersiell publisering.</p></> : <><span className="eyebrow">Sist oppdatert 16. august 2026</span><h2 id="legal-title">Brukervilkår</h2><p>CVklar er et skrive-, organiserings- og formateringsverktøy. Du har ansvar for at innholdet du bruker er riktig, lovlig og ditt eget.</p><h3>Stillingsimport</h3><p>Automatisk import kan være ufullstendig eller slutte å fungere når en annonseside endres eller blokkerer tilgang. Kontroller alltid opplysninger og frister mot originalannonsen.</p><h3>AI-råd og utkast</h3><p>Råd og tekstutkast er veiledende og gir ingen garanti for intervju, ansettelse eller et bestemt resultat. Kontroller alltid fakta og tilpass språket før innsending. Ikke bruk forslag som tillegger deg erfaring du ikke har.</p><h3>Tilgjengelighet</h3><p>Tjenesten leveres slik den er. Vi forsøker å gjøre lokal lagring og PDF-eksport pålitelig, men du bør beholde en egen kopi av viktige dokumenter.</p><h3>Akseptabel bruk</h3><p>Ikke bruk tjenesten til å laste opp skadevare, krenke andres rettigheter, utgi deg for å være noen andre eller automatisere misbruk.</p><h3>Reklame</h3><p>Google AdSense-annonser merkes tydelig og påvirker ikke rådene i CV-coachen. Ikke klikk annonser for å støtte tjenesten eller bruk automatiserte klikk.</p><p className="legal-warning">Før kommersiell lansering må vilkårene kvalitetssikres for faktisk foretaksinformasjon, leverandører, betalingsmodell og valgt jurisdiksjon.</p></>}
       </motion.section>
     </div>
   )

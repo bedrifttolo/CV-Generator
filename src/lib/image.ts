@@ -12,7 +12,7 @@ const readAsDataUrl = (file: File) =>
 
 /**
  * Leser et bilde som data-URL og skalerer det ned. Bildene lagres sammen med CV-en
- * i localStorage, så de må være små nok til å få plass – og de brukes som de er i PDF-en.
+ * i nettleserens lokale dokumentlager og brukes som de er i PDF-en.
  */
 export async function readImageFile(file: File, maxSize: number): Promise<string> {
   if (!allowed.has(file.type)) throw new Error('Velg et PNG-, JPG- eller WebP-bilde.')
