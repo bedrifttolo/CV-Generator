@@ -3,6 +3,10 @@ import { encodeCvPdfPayload } from './cv-payload'
 
 const A4_WIDTH_MM = 210
 const A4_HEIGHT_MM = 297
+const EXPORT_PIXEL_RATIO = 2
+// Safari og Chromium har grenser for hvor store bitmapper de kan opprette. En
+// lavere pikselratio påvirker bare oppløsningen, aldri CV-ens CSS-geometri.
+const MAX_EXPORT_BITMAP_EDGE = 15_000
 
 /**
  * Finner sideskift som ikke deler en enkelt erfaring, utdanning, prosjekt eller referanse i to.
@@ -113,7 +117,7 @@ const waitForImages = async (element: HTMLElement) => {
     try {
       await image.decode()
     } catch {
-      // html2canvas håndterer eventuell feil videre uten å stoppe resten av eksporten.
+      // En ugyldig valgfrifri logo skal ikke stoppe resten av eksporten.
     }
   }))
 }
@@ -122,8 +126,48 @@ const waitForStableLayout = () => new Promise<void>((resolve) => {
   requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
 })
 
+async function renderDocumentCanvas(element: HTMLElement, width: number, height: number) {
+  const { getFontEmbedCSS, toCanvas } = await import('html-to-image')
+  const pixelRatio = Math.max(
+    1,
+    Math.min(EXPORT_PIXEL_RATIO, MAX_EXPORT_BITMAP_EDGE / width, MAX_EXPORT_BITMAP_EDGE / height),
+  )
+
+  // html-to-image lar nettleserens egen layoutmotor tegne en klone av DOM-en i
+  // SVG foreignObject. Dermed får PDF-en de samme tekstmetrikker, listemarkører
+  // og SVG-posisjoner som forhåndsvisningen, i stedet for en ny tolkning av CSS.
+  let fontEmbedCSS: string | undefined
+  try {
+    fontEmbedCSS = await getFontEmbedCSS(element, { preferredFontFormat: 'woff2' })
+  } catch {
+    // Systemfontene i malene er fortsatt tilgjengelige dersom en ekstern
+    // fontserver er utilgjengelig. Eksporten skal ikke feile av den grunn.
+  }
+
+  return toCanvas(element, {
+    width,
+    height,
+    pixelRatio,
+    backgroundColor: '#ffffff',
+    cacheBust: true,
+    fontEmbedCSS,
+    preferredFontFormat: 'woff2',
+    skipAutoScale: true,
+    style: {
+      width: `${width}px`,
+      height: `${height}px`,
+      minHeight: `${height}px`,
+      maxHeight: 'none',
+      margin: '0',
+      overflow: 'hidden',
+      transform: 'none',
+      transformOrigin: 'top left',
+    },
+  })
+}
+
 export async function exportCvPdf(element: HTMLElement, fileName: string, data: CvData) {
-  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')])
+  const { jsPDF } = await import('jspdf')
   const captureRoot = element.closest<HTMLElement>('.cv-scale')
   captureRoot?.classList.add('cv-pdf-capture')
   element.classList.add('cv-exporting')
@@ -165,15 +209,7 @@ export async function exportCvPdf(element: HTMLElement, fileName: string, data: 
       }
     })
 
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      backgroundColor: '#ffffff',
-      useCORS: true,
-      logging: false,
-      width,
-      height: documentHeight,
-      windowWidth: Math.max(document.documentElement.clientWidth, width),
-    })
+    const canvas = await renderDocumentCanvas(element, width, documentHeight)
 
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
     pdf.setProperties({
