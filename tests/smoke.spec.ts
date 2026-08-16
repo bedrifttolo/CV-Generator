@@ -327,6 +327,10 @@ test('prosjekter, logoer, referanseplassering og A4-innstillinger fungerer', asy
   await expect(document.locator('a[href="https://example.no/karriere"]')).toContainText('Se bedriftens nettside')
 
   const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mNkYPj/n4GBgYGJAQoAHgQCAZMYD9sAAAAASUVORK5CYII=', 'base64')
+  const profileChooser = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Bytt profilbilde' }).click()
+  await (await profileChooser).setFiles({ name: 'profile.png', mimeType: 'image/png', buffer: pixel })
+  await expect(document.locator('.cv-photo')).toHaveCount(1)
   const logoChooser = page.waitForEvent('filechooser')
   await experience.getByRole('button', { name: 'Bilde / bedriftslogo (valgfritt)' }).click()
   await (await logoChooser).setFiles({ name: 'logo.png', mimeType: 'image/png', buffer: pixel })
@@ -368,6 +372,8 @@ test('prosjekter, logoer, referanseplassering og A4-innstillinger fungerer', asy
   await document.locator('.cv-contact a .editable').first().blur()
   await document.locator('.cv-contact a .editable').last().fill('https://www.linkedin.com/in/et-svaert-langt-profilnavn-som-skal-brytes-korrekt')
   await document.locator('.cv-contact a .editable').last().blur()
+  await document.locator('.cv-header > p .editable').fill('FULLSTACK-UTVIKLER | MASTERSTUDENT I PROGRAMVAREUTVIKLING')
+  await document.locator('.cv-header > p .editable').blur()
 
   await page.getByRole('button', { name: /Maler/ }).click()
   await page.getByLabel('Skriftstørrelse').selectOption('stor')
@@ -378,6 +384,13 @@ test('prosjekter, logoer, referanseplassering og A4-innstillinger fungerer', asy
 
   for (const template of ['Nordlys', 'Fjord', 'Klassisk', 'Signal', 'ATS Enkel', 'Europass', 'Harvard', 'Akademisk']) {
     await page.getByRole('button', { name: new RegExp(`^${template}`) }).click()
+    if (template === 'Nordlys' || template === 'Fjord') {
+      await expect.poll(() => document.evaluate((element) => {
+        const photo = element.querySelector('.cv-photo')?.getBoundingClientRect()
+        const header = element.querySelector('.cv-header')?.getBoundingClientRect()
+        return photo && header ? Math.abs(photo.bottom - header.bottom) : Number.POSITIVE_INFINITY
+      }), `${template} skal avslutte profilbildet på samme linje som toppfeltet`).toBeLessThanOrEqual(1)
+    }
     const overflow = await document.evaluate((element) => element.scrollWidth - element.clientWidth)
     expect(overflow, `${template} skal ikke ha horisontal overflow`).toBeLessThanOrEqual(1)
     const clippedFields = await document.locator('.cv-contact a, .cv-contact > span, .cv-side-block li, .cv-entry').evaluateAll((elements) => {

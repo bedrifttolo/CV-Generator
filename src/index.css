@@ -310,6 +310,7 @@ em { font-family: 'Fraunces', Georgia, serif; font-weight: 500; }
 .cv-sidebar, .cv-main, .cv-entry-body, .cv-entry-head > div { min-width: 0; }
 .cv-sidebar { background: var(--cv-side); color: #fff; font-size: var(--cv-font-meta, 9.5pt); }
 .cv-photo { width: 100%; aspect-ratio: 1.12; display: block; object-fit: cover; object-position: center 28%; filter: saturate(.78); }
+.template-nordlys .cv-photo, .template-fjord .cv-photo { height: var(--cv-header-height); aspect-ratio: auto; }
 .cv-sidebar-content { padding: var(--cv-margin-sidebar); }
 .cv-contact-section > h2, .cv-side-block h2 { margin: 0 0 var(--cv-space-sm); padding-bottom: var(--cv-space-xs); border-bottom: .5pt solid rgba(255,255,255,.35); font-size: var(--cv-font-secondary); font-weight: 700; line-height: 1.1; letter-spacing: .12em; text-transform: uppercase; }
 .cv-contact { display: flex; flex-direction: column; gap: var(--cv-space-sm); }

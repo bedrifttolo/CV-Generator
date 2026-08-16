@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react'
 import type { CSSProperties, FocusEvent, ReactNode } from 'react'
 import { ExternalLink, Github, Mail, MapPin, Phone } from 'lucide-react'
 import { colorThemes, cvStyleVars } from '../data'
@@ -60,6 +61,7 @@ const linkLabel = (value: string) => {
 }
 
 export default function CvPreview({ data, template, theme, onChange }: Props) {
+  const documentRef = useRef<HTMLDivElement>(null)
   const palette = colorThemes.find((item) => item.id === theme) ?? colorThemes[0]
   const documentStyle = {
     '--cv-accent': palette.accent,
@@ -71,6 +73,19 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
   const projects = data.projects ?? []
   const references = data.references ?? []
   const referencePlacement = data.referencePlacement ?? 'sidebar'
+
+  useLayoutEffect(() => {
+    const document = documentRef.current
+    const header = document?.querySelector<HTMLElement>('.cv-header')
+    if (!document || !header) return
+    const alignPhotoWithHeader = () => {
+      document.style.setProperty('--cv-header-height', `${header.offsetHeight}px`)
+    }
+    alignPhotoWithHeader()
+    const observer = new ResizeObserver(alignPhotoWithHeader)
+    observer.observe(header)
+    return () => observer.disconnect()
+  }, [template, data.appearance])
 
   const update = <K extends keyof CvData>(key: K, value: CvData[K]) => onChange({ ...data, [key]: value })
   const updateExperience = (index: number, key: 'role' | 'company' | 'period', value: string) => {
@@ -457,7 +472,7 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
   const visibleMain = data.sectionOrder.filter((id) => !data.hiddenSections.includes(id) && sections[id])
 
   return (
-    <div className={`cv-page template-${template}`} style={documentStyle} id="cv-document" aria-label="Redigerbar CV-forhåndsvisning">
+    <div ref={documentRef} className={`cv-page template-${template}`} style={documentStyle} id="cv-document" aria-label="Redigerbar CV-forhåndsvisning">
       <aside className="cv-sidebar">
         {data.photo && <img src={data.photo} alt={`Profilbilde av ${data.name}`} className="cv-photo" />}
         {visibleSidebar.length > 0 && (
