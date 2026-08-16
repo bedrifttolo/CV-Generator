@@ -602,6 +602,45 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
 
                 <button className="panel-action" onClick={() => photoRef.current?.click()}><ImagePlus /> Bytt profilbilde</button>
 
+                <div className="panel-section competency-editor-section">
+                  <div className="panel-section-head"><h3>Kompetanse</h3><button onClick={addSkillGroup}><Plus /> Ny underoverskrift</button></div>
+                  <p className="section-help">Lag kategorier som «Programmeringsspråk» og «Backend/Frameworks». Hver kategori vises med egne punkter i sidefeltet.</p>
+                  <div className="list-editor competency-flat-list">
+                    <div><b>Uten underoverskrift</b><button onClick={() => updateCv({ ...cv, skills: [...cv.skills, 'Ny kompetanse'] })}><Plus /> Ny rad</button></div>
+                    {cv.skills.map((item, index) => (
+                      <span key={`skills-${index}`}>
+                        <input aria-label={`Kompetanse uten underoverskrift ${index + 1}`} value={item} onChange={(event) => updateCv({ ...cv, skills: cv.skills.map((value, itemIndex) => itemIndex === index ? event.target.value : value) })} />
+                        <button onClick={() => updateCv({ ...cv, skills: cv.skills.filter((_, itemIndex) => itemIndex !== index) })} aria-label={`Slett kompetanse ${index + 1}`}><X /></button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="skill-group-editor">
+                    <div className="skill-group-editor-head"><div><b>Underoverskrifter med punktliste</b><small>Legg til så mange kategorier og ferdigheter du trenger.</small></div></div>
+                    {cv.skillGroups.length === 0 && <p className="skill-group-empty">Ingen underoverskrifter ennå.</p>}
+                    {cv.skillGroups.map((group, groupIndex) => (
+                      <article key={group.id}>
+                        <div className="skill-group-title">
+                          <label>Underoverskrift<input aria-label={`Underoverskrift ${groupIndex + 1}`} value={group.title} onChange={(event) => updateSkillGroup(groupIndex, { title: event.target.value })} /></label>
+                          <span>
+                            <button onClick={() => updateCv({ ...cv, skillGroups: move(cv.skillGroups, groupIndex, -1) })} aria-label={`Flytt kompetansegruppe ${groupIndex + 1} opp`}>↑</button>
+                            <button onClick={() => updateCv({ ...cv, skillGroups: move(cv.skillGroups, groupIndex, 1) })} aria-label={`Flytt kompetansegruppe ${groupIndex + 1} ned`}>↓</button>
+                            <button onClick={() => updateCv({ ...cv, skillGroups: cv.skillGroups.filter((item) => item.id !== group.id) })} aria-label={`Slett kompetansegruppe ${groupIndex + 1}`}><Trash2 /></button>
+                          </span>
+                        </div>
+                        <div className="skill-group-items">
+                          {group.items.map((item, itemIndex) => (
+                            <div key={`${group.id}-${itemIndex}`}>
+                              <input aria-label={`${group.title || 'Kompetansegruppe'} punkt ${itemIndex + 1}`} value={item} onChange={(event) => updateSkillGroup(groupIndex, { items: group.items.map((value, index) => index === itemIndex ? event.target.value : value) })} />
+                              <button onClick={() => updateSkillGroup(groupIndex, { items: group.items.filter((_, index) => index !== itemIndex) })} aria-label={`Slett punkt ${itemIndex + 1} fra ${group.title || 'kompetansegruppe'}`}><X /></button>
+                            </div>
+                          ))}
+                          <button className="add-skill-row" onClick={() => updateSkillGroup(groupIndex, { items: [...group.items, 'Ny kompetanse'] })}><Plus /> Ny ferdighet</button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="panel-section">
                   <div className="panel-section-head"><h3>Erfaring</h3><button onClick={() => updateCv({ ...cv, experience: [...cv.experience, { id: newId('exp'), role: 'Ny stilling', company: 'Arbeidsgiver', period: 'År til år', bullets: ['Beskriv et konkret ansvar eller resultat.'], companyLogo: '' }] })}><Plus /> Legg til</button></div>
                   <div className="reorder-list">
@@ -736,30 +775,7 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
 
                 <div className="panel-section">
                   <h3>Rader og innhold</h3>
-                  {([
-                    ['skills', 'Kompetanse', 'Ny kompetanse'],
-                    ['languages', 'Språk', 'Nytt språk og nivå'],
-                  ] as const).map(([key, label, placeholder]) => <div className="list-editor" key={key}><div><b>{label}</b><button onClick={() => updateCv({ ...cv, [key]: [...cv[key], placeholder] })}><Plus /> Ny rad</button></div>{cv[key].map((item, index) => <span key={`${key}-${index}`}><small>{item}</small><button onClick={() => updateCv({ ...cv, [key]: cv[key].filter((_, itemIndex) => itemIndex !== index) })} aria-label={`Slett ${label.toLowerCase()} ${index + 1}`}><X /></button></span>)}</div>)}
-                  <div className="skill-group-editor">
-                    <div className="skill-group-editor-head"><div><b>Underoverskrifter i kompetanse</b><small>For eksempel Programmeringsspråk med Java og Python under.</small></div><button onClick={addSkillGroup}><Plus /> Ny gruppe</button></div>
-                    {cv.skillGroups.map((group, groupIndex) => (
-                      <article key={group.id}>
-                        <div className="skill-group-title">
-                          <label>Underoverskrift<input aria-label={`Underoverskrift ${groupIndex + 1}`} value={group.title} onChange={(event) => updateSkillGroup(groupIndex, { title: event.target.value })} /></label>
-                          <button onClick={() => updateCv({ ...cv, skillGroups: cv.skillGroups.filter((item) => item.id !== group.id) })} aria-label={`Slett kompetansegruppe ${groupIndex + 1}`}><Trash2 /></button>
-                        </div>
-                        <div className="skill-group-items">
-                          {group.items.map((item, itemIndex) => (
-                            <div key={`${group.id}-${itemIndex}`}>
-                              <input aria-label={`${group.title || 'Kompetansegruppe'} punkt ${itemIndex + 1}`} value={item} onChange={(event) => updateSkillGroup(groupIndex, { items: group.items.map((value, index) => index === itemIndex ? event.target.value : value) })} />
-                              <button onClick={() => updateSkillGroup(groupIndex, { items: group.items.filter((_, index) => index !== itemIndex) })} aria-label={`Slett punkt ${itemIndex + 1} fra ${group.title || 'kompetansegruppe'}`}><X /></button>
-                            </div>
-                          ))}
-                          <button className="add-skill-row" onClick={() => updateSkillGroup(groupIndex, { items: [...group.items, 'Ny kompetanse'] })}><Plus /> Ny ferdighet</button>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
+                  <div className="list-editor"><div><b>Språk</b><button onClick={() => updateCv({ ...cv, languages: [...cv.languages, 'Nytt språk og nivå'] })}><Plus /> Ny rad</button></div>{cv.languages.map((item, index) => <span key={`languages-${index}`}><small>{item}</small><button onClick={() => updateCv({ ...cv, languages: cv.languages.filter((_, itemIndex) => itemIndex !== index) })} aria-label={`Slett språk ${index + 1}`}><X /></button></span>)}</div>
                   {cv.customSections.map((section) => <div className="list-editor" key={section.id}><div><b>{section.title} <small>{section.placement === 'sidebar' ? 'Sidefelt' : 'Hovedfelt'}</small></b><button onClick={() => updateCv({ ...cv, customSections: cv.customSections.map((item) => item.id === section.id ? { ...item, items: [...item.items, 'Ny rad'] } : item) })}><Plus /> Ny rad</button></div>{section.items.map((item, index) => <span key={`${section.id}-${index}`}><small>{item}</small><button onClick={() => updateCv({ ...cv, customSections: cv.customSections.map((entry) => entry.id === section.id ? { ...entry, items: entry.items.filter((_, itemIndex) => itemIndex !== index) } : entry) })} aria-label={`Slett rad ${index + 1} fra ${section.title}`}><X /></button></span>)}</div>)}
                 </div>
 

@@ -206,11 +206,11 @@ test('prosjekter, logoer, referanseplassering og A4-innstillinger fungerer', asy
   await projects.getByRole('button', { name: /Legg til/ }).click()
   await expect(projects.locator('.reorder-list article')).toHaveCount(2)
 
-  const rows = page.locator('.panel-section').filter({ has: page.getByRole('heading', { name: 'Rader og innhold', exact: true }) })
-  await rows.getByRole('button', { name: 'Ny gruppe' }).click()
-  await rows.getByLabel('Underoverskrift 1').fill('Programmeringsspråk')
-  await rows.getByLabel('Programmeringsspråk punkt 1').fill('Java')
-  await rows.getByLabel('Programmeringsspråk punkt 2').fill('Python og et svært langt kompetansenavn som skal brytes over flere linjer uten å bli klippet')
+  const competence = page.locator('.competency-editor-section')
+  await competence.getByRole('button', { name: 'Ny underoverskrift' }).click()
+  await competence.getByLabel('Underoverskrift 1', { exact: true }).fill('Programmeringsspråk')
+  await competence.getByLabel('Programmeringsspråk punkt 1').fill('Java')
+  await competence.getByLabel('Programmeringsspråk punkt 2').fill('Python og et svært langt kompetansenavn som skal brytes over flere linjer uten å bli klippet')
   await expect(document.locator('.cv-sidebar')).toContainText('Programmeringsspråk')
   await expect(document.locator('.cv-sidebar')).toContainText('Python og et svært langt kompetansenavn')
 

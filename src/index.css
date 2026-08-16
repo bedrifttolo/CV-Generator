@@ -236,12 +236,15 @@ em { font-family: 'Fraunces', Georgia, serif; font-weight: 500; }
 .skill-group-editor-head b { font-size: 8px; }
 .skill-group-editor-head small { color: #6f7a74; font-size: 7px; line-height: 1.35; }
 .skill-group-editor > article { padding: 9px; border-top: 1px solid #dfe3df; background: #fff; }
+.skill-group-empty { margin: 0; padding: 10px; border-top: 1px solid #dfe3df; color: #737e78; font-size: 7px; }
 .skill-group-title { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 5px; }
 .skill-group-title label { display: flex; flex-direction: column; gap: 4px; color: #59665f; font-size: 7px; font-weight: 700; }
+.skill-group-title > span { display: flex; align-items: center; }
 .skill-group-editor input { width: 100%; min-width: 0; border: 1px solid #d8dbd7; border-radius: 4px; background: #fafbf8; padding: 7px; color: var(--ink); font-size: 8px; }
 .skill-group-items { display: flex; flex-direction: column; gap: 5px; margin-top: 7px; }
 .skill-group-items > div { display: grid; grid-template-columns: 1fr auto; gap: 4px; }
 .skill-group-items .add-skill-row { align-self: flex-start; padding-left: 0; }
+.competency-flat-list > span input { width: 100%; min-width: 0; border: 0; background: transparent; padding: 2px 0; color: #52615a; font-size: 8px; }
 .reference-placement { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
 .reference-placement label { border: 1px solid #d9ddd9; border-radius: 4px; padding: 7px 5px; display: flex; align-items: center; justify-content: center; gap: 4px; background: #fafbf8; font-size: 8px; cursor: pointer; }
 .reference-placement label:has(input:checked) { border-color: #1d6d4b; background: #eef9d2; }
