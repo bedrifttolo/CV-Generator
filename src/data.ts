@@ -78,6 +78,7 @@ export const defaultCv: CvData = {
         'Koordinerer tverrfaglige leveranser fra oppstart til ferdig overlevering.',
         'Forbedret rapporteringsrutinen og reduserte ukentlig administrasjonstid med 20 prosent.',
       ],
+      links: [],
     },
     {
       id: 'exp-2',
@@ -87,6 +88,7 @@ export const defaultCv: CvData = {
       bullets: [
         'Fulgt opp kunder, avklart behov og samarbeidet med fagmiljøer om gode løsninger.',
       ],
+      links: [],
     },
   ],
   education: [
@@ -107,6 +109,7 @@ export const defaultCv: CvData = {
       technologies: ['Prosjektledelse', 'Tjenestedesign', 'Power BI'],
       url: '',
       githubUrl: '',
+      links: [],
     },
   ],
   languages: ['Norsk, morsmål', 'Engelsk, godt nivå'],
@@ -139,6 +142,7 @@ export const blankCv: CvData = {
       company: 'Arbeidsgiver',
       period: 'År til år',
       bullets: ['Beskriv et konkret ansvar, en oppgave eller et målbart resultat.'],
+      links: [],
     },
   ],
   education: [
@@ -159,6 +163,7 @@ export const blankCv: CvData = {
       technologies: ['Verktøy eller metode'],
       url: '',
       githubUrl: '',
+      links: [],
     },
   ],
   languages: ['Norsk, nivå', 'Engelsk, nivå'],

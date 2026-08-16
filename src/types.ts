@@ -10,6 +10,12 @@ export type TemplateId =
 
 export type ThemeId = 'skog' | 'hav' | 'burgunder' | 'sand' | 'mono'
 
+export type CvLink = {
+  id: string
+  label: string
+  url: string
+}
+
 export type Experience = {
   id: string
   role: string
@@ -17,6 +23,7 @@ export type Experience = {
   period: string
   bullets: string[]
   companyLogo?: string
+  links?: CvLink[]
 }
 
 export type SkillGroup = {
@@ -42,6 +49,7 @@ export type Project = {
   url?: string
   githubUrl?: string
   image?: string
+  links?: CvLink[]
 }
 
 export type Reference = {

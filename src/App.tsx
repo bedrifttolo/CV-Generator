@@ -48,6 +48,7 @@ import { extractFileText, parseResume } from './lib/parser'
 import { exportCvPdf } from './lib/pdf'
 import type {
   CvData,
+  CvLink,
   CoverLetter,
   Industry,
   JobPosting,
@@ -526,6 +527,7 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
       url: '',
       githubUrl: '',
       image: '',
+      links: [],
     }
     const sectionOrder = cv.sectionOrder.includes('projects') ? cv.sectionOrder : [...cv.sectionOrder, 'projects']
     updateCv({
@@ -642,7 +644,7 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
                 </div>
 
                 <div className="panel-section">
-                  <div className="panel-section-head"><h3>Erfaring</h3><button onClick={() => updateCv({ ...cv, experience: [...cv.experience, { id: newId('exp'), role: 'Ny stilling', company: 'Arbeidsgiver', period: 'År til år', bullets: ['Beskriv et konkret ansvar eller resultat.'], companyLogo: '' }] })}><Plus /> Legg til</button></div>
+                  <div className="panel-section-head"><h3>Erfaring</h3><button onClick={() => updateCv({ ...cv, experience: [...cv.experience, { id: newId('exp'), role: 'Ny stilling', company: 'Arbeidsgiver', period: 'År til år', bullets: ['Beskriv et konkret ansvar eller resultat.'], companyLogo: '', links: [] }] })}><Plus /> Legg til</button></div>
                   <div className="reorder-list">
                     {cv.experience.map((entry, index) => (
                       <article className="experience-editor-card" key={entry.id}>
@@ -664,6 +666,16 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
                                 <div className="bullet-row" key={`${entry.id}-editor-bullet-${bulletIndex}`}>
                                   <textarea aria-label={`Erfaringspunkt ${bulletIndex + 1}`} rows={2} value={bullet} onChange={(event) => updateExperience(index, { bullets: entry.bullets.map((item, itemIndex) => itemIndex === bulletIndex ? event.target.value : item) })} />
                                   <button onClick={() => updateExperience(index, { bullets: entry.bullets.filter((_, itemIndex) => itemIndex !== bulletIndex) })} aria-label={`Slett erfaringspunkt ${bulletIndex + 1}`}><X /></button>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="entry-link-editor field-wide">
+                              <div><b>Lenker <small>valgfritt</small></b><button onClick={() => updateExperience(index, { links: [...(entry.links ?? []), { id: newId('link'), label: 'Åpne nettside', url: '' }] })}><Plus /> Ny lenke</button></div>
+                              {(entry.links ?? []).map((link: CvLink, linkIndex) => (
+                                <div className="entry-link-row" key={link.id}>
+                                  <input aria-label={`Erfaring ${index + 1} lenketekst ${linkIndex + 1}`} value={link.label} onChange={(event) => updateExperience(index, { links: (entry.links ?? []).map((item, itemIndex) => itemIndex === linkIndex ? { ...item, label: event.target.value } : item) })} placeholder="Åpne app" />
+                                  <input aria-label={`Erfaring ${index + 1} lenkeadresse ${linkIndex + 1}`} type="url" value={link.url} onChange={(event) => updateExperience(index, { links: (entry.links ?? []).map((item, itemIndex) => itemIndex === linkIndex ? { ...item, url: event.target.value } : item) })} placeholder="https://…" />
+                                  <button onClick={() => updateExperience(index, { links: (entry.links ?? []).filter((_, itemIndex) => itemIndex !== linkIndex) })} aria-label={`Slett lenke ${linkIndex + 1} fra erfaring ${index + 1}`}><X /></button>
                                 </div>
                               ))}
                             </div>
@@ -710,8 +722,16 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
                             <label>Periode<input value={entry.period ?? ''} onChange={(event) => updateProject(index, 'period', event.target.value)} /></label>
                             <label className="field-wide">Kort beskrivelse<textarea rows={3} value={entry.description ?? ''} onChange={(event) => updateProject(index, 'description', event.target.value)} /></label>
                             <label className="field-wide">Teknologier <small>Skill med komma eller ·</small><input value={(entry.technologies ?? []).join(' · ')} onChange={(event) => updateProject(index, 'technologies', event.target.value.split(/[,·]/).map((item) => item.trim()))} /></label>
-                            <label>Prosjektlenke<input type="url" value={entry.url ?? ''} onChange={(event) => updateProject(index, 'url', event.target.value)} placeholder="https://…" /></label>
-                            <label>GitHub-lenke<input type="url" value={entry.githubUrl ?? ''} onChange={(event) => updateProject(index, 'githubUrl', event.target.value)} placeholder="https://github.com/…" /></label>
+                            <div className="entry-link-editor field-wide">
+                              <div><b>Lenker <small>valgfritt · app, nettside eller GitHub</small></b><button onClick={() => updateProject(index, 'links', [...(entry.links ?? []), { id: newId('link'), label: 'Åpne prosjekt', url: '' }])}><Plus /> Ny lenke</button></div>
+                              {(entry.links ?? []).map((link, linkIndex) => (
+                                <div className="entry-link-row" key={link.id}>
+                                  <input aria-label={`Prosjekt ${index + 1} lenketekst ${linkIndex + 1}`} value={link.label} onChange={(event) => updateProject(index, 'links', (entry.links ?? []).map((item, itemIndex) => itemIndex === linkIndex ? { ...item, label: event.target.value } : item))} placeholder="Åpne app" />
+                                  <input aria-label={`Prosjekt ${index + 1} lenkeadresse ${linkIndex + 1}`} type="url" value={link.url} onChange={(event) => updateProject(index, 'links', (entry.links ?? []).map((item, itemIndex) => itemIndex === linkIndex ? { ...item, url: event.target.value } : item))} placeholder="https://…" />
+                                  <button onClick={() => updateProject(index, 'links', (entry.links ?? []).filter((_, itemIndex) => itemIndex !== linkIndex))} aria-label={`Slett lenke ${linkIndex + 1} fra prosjekt ${index + 1}`}><X /></button>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         </div>
                         <span>

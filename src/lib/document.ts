@@ -1,5 +1,5 @@
 import { defaultAppearance, marginRange, spaceScales, typeScales } from '../data'
-import type { CvAppearance, CvData, Project, Reference, ReferencePlacement, SkillGroup } from '../types'
+import type { CvAppearance, CvData, CvLink, Project, Reference, ReferencePlacement, SkillGroup } from '../types'
 
 let counter = 0
 export const newId = (prefix: string) => {
@@ -55,12 +55,35 @@ export function normalizeReferences(value: unknown): Reference[] | null {
 export const hasReferenceContent = (reference: Reference) =>
   Boolean(reference.name || reference.role || reference.company || reference.phone || reference.email || reference.text)
 
+export function normalizeLinks(value: unknown): CvLink[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item): CvLink | null => {
+      if (typeof item === 'string') {
+        const url = text(item)
+        return url ? { id: newId('link'), label: '', url } : null
+      }
+      if (!item || typeof item !== 'object') return null
+      const entry = item as Partial<CvLink>
+      const url = text(entry.url)
+      const label = text(entry.label)
+      if (!url && !label) return null
+      return { id: text(entry.id) || newId('link'), label, url }
+    })
+    .filter((item): item is CvLink => item !== null)
+}
+
 export function normalizeProjects(value: unknown): Project[] | null {
   if (!Array.isArray(value)) return null
   return value
     .map((item): Project | null => {
       if (!item || typeof item !== 'object') return null
       const entry = item as Partial<Project>
+      const links = normalizeLinks(entry.links)
+      const legacyUrl = text(entry.url)
+      const legacyGithubUrl = text(entry.githubUrl)
+      if (legacyUrl && !links.some((link) => link.url === legacyUrl)) links.push({ id: newId('link'), label: 'Åpne prosjekt', url: legacyUrl })
+      if (legacyGithubUrl && !links.some((link) => link.url === legacyGithubUrl)) links.push({ id: newId('link'), label: 'GitHub', url: legacyGithubUrl })
       return {
         id: text(entry.id) || newId('prj'),
         title: text(entry.title),
@@ -68,9 +91,10 @@ export function normalizeProjects(value: unknown): Project[] | null {
         period: text(entry.period),
         description: text(entry.description),
         technologies: Array.isArray(entry.technologies) ? entry.technologies.map(text).filter(Boolean) : [],
-        url: text(entry.url),
-        githubUrl: text(entry.githubUrl),
+        url: '',
+        githubUrl: '',
         image: text(entry.image),
+        links,
       }
     })
     .filter((item): item is Project => item !== null && hasProjectContent(item))
@@ -79,7 +103,7 @@ export function normalizeProjects(value: unknown): Project[] | null {
 export const hasProjectContent = (project: Project) =>
   Boolean(
     project.title || project.subtitle || project.description || project.period || project.technologies?.length ||
-    project.url || project.githubUrl || project.image,
+    project.url || project.githubUrl || project.image || project.links?.some((link) => link.url),
   )
 
 function normalizeAppearance(value: unknown): CvAppearance {
@@ -153,6 +177,7 @@ export function normalizeCv(parsed: Partial<CvData>, fallback: CvData): CvData {
         period: text(entry.period),
         bullets: textList(entry.bullets),
         companyLogo: text(entry.companyLogo),
+        links: normalizeLinks(entry.links),
       })),
     education: storedEducation
       .filter((entry) => entry && typeof entry === 'object')

@@ -112,12 +112,20 @@ test('CV-import trekker ut data og PDF kan lastes ned', async ({ page }, testInf
   const experiencePanel = page.locator('.panel-section').filter({ has: page.getByRole('heading', { name: 'Erfaring', exact: true }) })
   await experiencePanel.getByRole('button', { name: 'Nytt punkt' }).click()
   await experiencePanel.getByRole('textbox', { name: 'Erfaringspunkt 2', exact: true }).fill('Samarbeidet tett med design og innhold.')
+  await experiencePanel.getByRole('button', { name: 'Ny lenke' }).click()
+  await experiencePanel.getByLabel('Erfaring 1 lenketekst 1').fill('Se arbeidsgiver')
+  await experiencePanel.getByLabel('Erfaring 1 lenkeadresse 1').fill('https://example.no/arbeid')
   const projectPanel = page.locator('.panel-section').filter({ has: page.getByRole('heading', { name: 'Mine prosjekter', exact: true }) })
+  await projectPanel.getByRole('button', { name: 'Ny lenke' }).click()
+  await projectPanel.getByLabel('Prosjekt 1 lenketekst 1').fill('Åpne app')
+  await projectPanel.getByLabel('Prosjekt 1 lenkeadresse 1').fill('https://app.example.no')
   const projectImage = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mNkYPj/n4GBgYGJAQoAHgQCAZMYD9sAAAAASUVORK5CYII=', 'base64')
   const projectImageChooser = page.waitForEvent('filechooser')
   await projectPanel.getByRole('button', { name: 'Prosjektbilde (valgfritt)' }).click()
   await (await projectImageChooser).setFiles({ name: 'portal.png', mimeType: 'image/png', buffer: projectImage })
   await expect(page.locator('#cv-document .cv-project .cv-entry-logo')).toHaveCount(1)
+  await expect(page.locator('#cv-document a[href="https://example.no/arbeid"]')).toContainText('Se arbeidsgiver')
+  await expect(page.locator('#cv-document a[href="https://app.example.no"]')).toContainText('Åpne app')
 
   const downloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: /Last ned PDF/ }).click()
@@ -149,6 +157,8 @@ test('CV-import trekker ut data og PDF kan lastes ned', async ({ page }, testInf
   await expect(page.locator('#cv-document .cv-skill-group').filter({ hasText: 'Universell utforming' })).toHaveCount(1)
   await expect(page.locator('#cv-document .cv-project')).toContainText('Tilgjengelig portal')
   await expect(page.locator('#cv-document .cv-project .cv-entry-logo')).toHaveCount(1)
+  await expect(page.locator('#cv-document a[href="https://example.no/arbeid"]')).toContainText('Se arbeidsgiver')
+  await expect(page.locator('#cv-document a[href="https://app.example.no"]')).toContainText('Åpne app')
 })
 
 test('en lang CV eksporteres over flere A4-sider', async ({ page }, testInfo) => {
@@ -217,8 +227,12 @@ test('prosjekter, logoer, referanseplassering og A4-innstillinger fungerer', asy
   const experience = page.locator('.panel-section').filter({ has: page.getByRole('heading', { name: 'Erfaring', exact: true }) })
   await experience.getByRole('button', { name: 'Nytt punkt' }).click()
   await experience.getByRole('textbox', { name: 'Erfaringspunkt 2', exact: true }).fill('Et eget punkt som dokumenterer ansvar og resultat.')
+  await experience.getByRole('button', { name: 'Ny lenke' }).click()
+  await experience.getByLabel('Erfaring 1 lenketekst 1').fill('Se bedriftens nettside')
+  await experience.getByLabel('Erfaring 1 lenkeadresse 1').fill('https://example.no/karriere')
   await expect(document.locator('.cv-entry').first().locator('li')).toHaveCount(2)
   await expect(document.locator('.cv-entry').first()).toContainText('Et eget punkt som dokumenterer ansvar og resultat.')
+  await expect(document.locator('a[href="https://example.no/karriere"]')).toContainText('Se bedriftens nettside')
 
   const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mNkYPj/n4GBgYGJAQoAHgQCAZMYD9sAAAAASUVORK5CYII=', 'base64')
   const logoChooser = page.waitForEvent('filechooser')
@@ -228,6 +242,10 @@ test('prosjekter, logoer, referanseplassering og A4-innstillinger fungerer', asy
   await expect(experience.locator('.editor-item-image')).toHaveCount(1)
 
   const firstProject = projects.locator('.project-editor-card').first()
+  await firstProject.getByRole('button', { name: 'Ny lenke' }).click()
+  await firstProject.getByLabel('Prosjekt 1 lenketekst 1').fill('Åpne CV-appen')
+  await firstProject.getByLabel('Prosjekt 1 lenkeadresse 1').fill('https://app.example.no/cv')
+  await expect(document.locator('a[href="https://app.example.no/cv"]')).toContainText('Åpne CV-appen')
   const iconChooser = page.waitForEvent('filechooser')
   await firstProject.getByRole('button', { name: 'Prosjektbilde (valgfritt)' }).click()
   await (await iconChooser).setFiles({ name: 'project.png', mimeType: 'image/png', buffer: pixel })
@@ -273,6 +291,8 @@ test('prosjekter, logoer, referanseplassering og A4-innstillinger fungerer', asy
     expect(clippedFields, `${template} skal bryte lange felt`).toEqual([])
     await expect(document.locator('.cv-skill-group')).toContainText('Programmeringsspråk')
     await expect(document.locator('.cv-project .cv-entry-logo')).toHaveCount(1)
+    await expect(document.locator('a[href="https://example.no/karriere"]')).toContainText('Se bedriftens nettside')
+    await expect(document.locator('a[href="https://app.example.no/cv"]')).toContainText('Åpne CV-appen')
     await document.screenshot({ path: `test-results/template-${template.toLowerCase().replace(/\s+/g, '-')}.png` })
   }
 })
@@ -316,4 +336,59 @@ test('eldre lagrede CV-er migreres uten å få eksempelprosjekter', async ({ pag
   expect(stored.appearance).toMatchObject({ typeScale: 'standard', spaceScale: 'standard', margin: 20 })
   expect(stored.skillGroups).toEqual([])
   expect(stored.sidebarOrder).toContain('side-skills')
+})
+
+test('eldre prosjektlenker migreres til navngitte lenker', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'Migreringen trenger bare nettlesermotorene som dekker desktop')
+  await page.addInitScript(() => {
+    localStorage.setItem('cvklar-document', JSON.stringify({
+      name: 'Ola Nordmann',
+      title: 'Utvikler',
+      email: 'ola@example.no',
+      phone: '',
+      location: 'Oslo',
+      website: '',
+      summary: '',
+      skills: [],
+      experience: [],
+      education: [],
+      projects: [{
+        id: 'legacy-project',
+        title: 'Min app',
+        subtitle: '',
+        period: '',
+        description: '',
+        technologies: [],
+        url: 'https://app.example.no',
+        githubUrl: 'https://github.com/example/app',
+        image: '',
+      }],
+      languages: [],
+      references: [],
+      customSections: [],
+      hiddenSections: [],
+      hiddenContactFields: [],
+      sidebarOrder: ['contact'],
+      photo: '',
+      sectionOrder: ['projects'],
+    }))
+  })
+
+  await page.goto('/cv')
+  const project = page.locator('#cv-document .cv-project')
+  await expect(project).toContainText('Min app')
+  await expect(project.locator('a[href="https://app.example.no"]')).toContainText('Åpne prosjekt')
+  await expect(project.locator('a[href="https://github.com/example/app"]')).toContainText('GitHub')
+
+  await expect.poll(() => page.evaluate(() => {
+    const stored = JSON.parse(localStorage.getItem('cvklar-document') ?? '{}')
+    return stored.projects?.[0]?.links?.length
+  })).toBe(2)
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('cvklar-document') ?? '{}'))
+  expect(stored.projects[0].links).toEqual(expect.arrayContaining([
+    expect.objectContaining({ label: 'Åpne prosjekt', url: 'https://app.example.no' }),
+    expect.objectContaining({ label: 'GitHub', url: 'https://github.com/example/app' }),
+  ]))
+  expect(stored.projects[0].url).toBe('')
+  expect(stored.projects[0].githubUrl).toBe('')
 })

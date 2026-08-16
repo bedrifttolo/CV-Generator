@@ -141,7 +141,10 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
   const visibleReferences = references.filter(hasReferenceContent)
   const visibleProjects = projects.filter(hasProjectContent)
   const visibleExperience = data.experience.filter((entry) =>
-    Boolean(entry.role.trim() || entry.company.trim() || entry.period.trim() || entry.companyLogo || entry.bullets.some((bullet) => bullet.trim())),
+    Boolean(
+      entry.role.trim() || entry.company.trim() || entry.period.trim() || entry.companyLogo ||
+      entry.bullets.some((bullet) => bullet.trim()) || entry.links?.some((link) => link.url.trim()),
+    ),
   )
   const visibleEducation = data.education.filter((entry) => Boolean(entry.degree.trim() || entry.school.trim() || entry.period.trim()))
   const visibleSkills = data.skills.map((value, index) => ({ value, index })).filter(({ value }) => value.trim())
@@ -173,6 +176,7 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
         <div className="cv-entries">
           {visibleExperience.map((entry) => {
             const index = data.experience.indexOf(entry)
+            const links = (entry.links ?? []).filter((link) => link.url.trim())
             return <article className="cv-entry" data-cv-block key={entry.id}>
               {entry.companyLogo && <img className="cv-entry-logo" src={entry.companyLogo} alt="" aria-hidden="true" />}
               <div className="cv-entry-body">
@@ -191,6 +195,16 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
                       </li>
                     ))}
                   </ul>
+                )}
+                {links.length > 0 && (
+                  <p className="cv-entry-links">
+                    {links.map((link) => (
+                      <a href={toHref(link.url)} target="_blank" rel="noreferrer" key={link.id}>
+                        {/github\.com/i.test(link.url) ? <Github size={11} /> : <ExternalLink size={11} />}
+                        {link.label.trim() || linkLabel(link.url)}
+                      </a>
+                    ))}
+                  </p>
                 )}
               </div>
             </article>
@@ -230,6 +244,14 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
           {visibleProjects.map((project) => {
             const index = projects.indexOf(project)
             const technologies = (project.technologies ?? []).filter((item) => item.trim())
+            const projectLinks = [...(project.links ?? [])]
+            if (project.githubUrl && !projectLinks.some((link) => link.url === project.githubUrl)) {
+              projectLinks.push({ id: `${project.id}-legacy-github`, label: 'GitHub', url: project.githubUrl })
+            }
+            if (project.url && !projectLinks.some((link) => link.url === project.url)) {
+              projectLinks.push({ id: `${project.id}-legacy-url`, label: '', url: project.url })
+            }
+            const visibleLinks = projectLinks.filter((link) => link.url.trim())
             return (
               <article className="cv-entry cv-project" data-cv-block key={project.id}>
                 {project.image && <img className="cv-entry-logo" src={project.image} alt="" aria-hidden="true" />}
@@ -255,14 +277,14 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
                       <Editable multiline onCommit={(value) => updateProject(index, 'description', value)}>{project.description}</Editable>
                     </div>
                   )}
-                  {(project.url || project.githubUrl) && (
-                    <p className="cv-project-links">
-                      {project.githubUrl && (
-                        <a href={toHref(project.githubUrl)} target="_blank" rel="noreferrer"><Github size={11} /> GitHub</a>
-                      )}
-                      {project.url && (
-                        <a href={toHref(project.url)} target="_blank" rel="noreferrer"><ExternalLink size={11} /> {linkLabel(project.url)}</a>
-                      )}
+                  {visibleLinks.length > 0 && (
+                    <p className="cv-entry-links cv-project-links">
+                      {visibleLinks.map((link) => (
+                        <a href={toHref(link.url)} target="_blank" rel="noreferrer" key={link.id}>
+                          {/github\.com/i.test(link.url) ? <Github size={11} /> : <ExternalLink size={11} />}
+                          {link.label.trim() || linkLabel(link.url)}
+                        </a>
+                      ))}
                     </p>
                   )}
                 </div>
