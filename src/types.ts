@@ -38,6 +38,7 @@ export type Education = {
   school: string
   period: string
   bullets: string[]
+  schoolLogo?: string
 }
 
 export type Project = {

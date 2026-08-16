@@ -20,7 +20,8 @@ test('forside og CV-arbeidsbord fungerer', async ({ page }, testInfo) => {
   await page.getByRole('button', { name: /Start fra scratch/ }).click()
 
   await expect(page.getByLabel('Redigerbar CV-forhåndsvisning')).toBeVisible()
-  await expect(page.getByText('Lagret lokalt')).toHaveCount(0)
+  await expect(page.getByText('Lagret lokalt', { exact: true })).toHaveCount(1)
+  await expect(page.getByRole('button', { name: 'Lagre lokalt', exact: true })).toBeVisible()
   await expect(page.locator('#cv-document')).toContainText('Navnet ditt')
   await expect(page.getByText(/Opplasting er helt valgfritt/)).toBeVisible()
   const experienceSection = page.locator('.panel-section').filter({ has: page.locator('h3', { hasText: 'Erfaring' }) })
@@ -75,21 +76,31 @@ test('guide og søknadsbrev kan åpnes', async ({ page }, testInfo) => {
   await page.screenshot({ path: `test-results/${testInfo.project.name}-letter.png`, fullPage: true })
 })
 
-test('gammelt personlig eksempel erstattes med fiktive standarddata', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name === 'mobile', 'Migreringen trenger bare én nettlesermotor')
+test('en personlig CV lagres lokalt og beholdes etter reload', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'Lokal lagring dekkes av desktopmotorene')
   await page.addInitScript(() => {
+    if (sessionStorage.getItem('cvklar-personal-fixture')) return
+    sessionStorage.setItem('cvklar-personal-fixture', 'ready')
     localStorage.setItem('cvklar-document', JSON.stringify({
       name: 'Thomas Tolo Jensen',
+      title: 'Fullstack-utvikler',
       email: 'thomastj278@gmail.com',
       website: 'tolojensentech.no',
     }))
   })
-  await page.goto('/')
-  const consent = page.getByRole('button', { name: 'Kun nødvendig' })
-  if (await consent.isVisible()) await consent.click()
-  await page.getByRole('button', { name: 'Åpne CV' }).click()
-  await expect(page.locator('#cv-document')).toContainText('Kari Nordmann')
-  await expect(page.locator('#cv-document')).not.toContainText('Thomas Tolo Jensen')
+  await page.goto('/cv')
+  const document = page.locator('#cv-document')
+  await expect(document).toContainText('Thomas Tolo Jensen')
+  const summary = document.locator('.cv-section').filter({ has: page.getByRole('heading', { name: 'Profil', exact: true }) }).locator('.editable')
+  await summary.fill('Denne teksten skal ligge trygt i nettleseren etter en reload.')
+  await summary.blur()
+  await page.getByRole('button', { name: 'Lagre lokalt', exact: true }).click()
+  await expect(page.getByText('CV-en er lagret lokalt i denne nettleseren.')).toBeVisible()
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('cvklar-document') ?? '{}').summary)).toBe('Denne teksten skal ligge trygt i nettleseren etter en reload.')
+
+  await page.reload()
+  await expect(document).toContainText('Thomas Tolo Jensen')
+  await expect(document).toContainText('Denne teksten skal ligge trygt i nettleseren etter en reload.')
 })
 
 test('CV-import trekker ut data og PDF kan lastes ned', async ({ page }, testInfo) => {
@@ -120,17 +131,21 @@ test('CV-import trekker ut data og PDF kan lastes ned', async ({ page }, testInf
   const educationPanel = page.locator('.panel-section').filter({ has: page.getByRole('heading', { name: 'Utdanning', exact: true }) })
   await educationPanel.getByRole('button', { name: 'Nytt punkt' }).click()
   await educationPanel.getByLabel('Utdanningspunkt 2', { exact: true }).fill('Fullførte studiet med en relevant faglig fordypning.')
+  const entryImage = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mNkYPj/n4GBgYGJAQoAHgQCAZMYD9sAAAAASUVORK5CYII=', 'base64')
+  const educationImageChooser = page.waitForEvent('filechooser')
+  await educationPanel.getByRole('button', { name: 'Bilde / skolelogo (valgfritt)' }).click()
+  await (await educationImageChooser).setFiles({ name: 'school.png', mimeType: 'image/png', buffer: entryImage })
   const projectPanel = page.locator('.panel-section').filter({ has: page.getByRole('heading', { name: 'Mine prosjekter', exact: true }) })
   await projectPanel.getByRole('button', { name: 'Nytt punkt' }).click()
   await projectPanel.getByLabel('Prosjektpunkt 3', { exact: true }).fill('Dokumenterte løsningen og overleverte den til produkteier.')
   await projectPanel.getByRole('button', { name: 'Ny lenke' }).click()
   await projectPanel.getByLabel('Prosjekt 1 lenketekst 1').fill('Åpne app')
   await projectPanel.getByLabel('Prosjekt 1 lenkeadresse 1').fill('https://app.example.no')
-  const projectImage = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mNkYPj/n4GBgYGJAQoAHgQCAZMYD9sAAAAASUVORK5CYII=', 'base64')
   const projectImageChooser = page.waitForEvent('filechooser')
   await projectPanel.getByRole('button', { name: 'Prosjektbilde (valgfritt)' }).click()
-  await (await projectImageChooser).setFiles({ name: 'portal.png', mimeType: 'image/png', buffer: projectImage })
+  await (await projectImageChooser).setFiles({ name: 'portal.png', mimeType: 'image/png', buffer: entryImage })
   await expect(page.locator('#cv-document .cv-project .cv-entry-logo')).toHaveCount(1)
+  await expect(page.locator('#cv-document .cv-education-section .cv-entry-logo')).toHaveCount(1)
   await expect(page.locator('#cv-document a[href="https://example.no/arbeid"]')).toContainText('Se arbeidsgiver')
   await expect(page.locator('#cv-document a[href="https://app.example.no"]')).toContainText('Åpne app')
 
@@ -164,6 +179,7 @@ test('CV-import trekker ut data og PDF kan lastes ned', async ({ page }, testInf
   await expect(page.locator('#cv-document .cv-skill-group').filter({ hasText: 'Universell utforming' })).toHaveCount(1)
   await expect(page.locator('#cv-document .cv-project')).toContainText('Tilgjengelig portal')
   await expect(page.locator('#cv-document .cv-project .cv-entry-logo')).toHaveCount(1)
+  await expect(page.locator('#cv-document .cv-education-section .cv-entry-logo')).toHaveCount(1)
   await expect(page.locator('#cv-document .cv-education-section')).toContainText('Fullførte studiet med en relevant faglig fordypning.')
   await expect(page.locator('#cv-document .cv-project')).toContainText('Dokumenterte løsningen og overleverte den til produkteier.')
   await expect(page.locator('#cv-document a[href="https://example.no/arbeid"]')).toContainText('Se arbeidsgiver')
@@ -266,6 +282,10 @@ test('prosjekter, logoer, referanseplassering og A4-innstillinger fungerer', asy
   const education = page.locator('.panel-section').filter({ has: page.getByRole('heading', { name: 'Utdanning', exact: true }) })
   await education.getByRole('button', { name: 'Nytt punkt' }).click()
   await education.getByLabel('Utdanningspunkt 2', { exact: true }).fill('Fordypning i tilgjengelige digitale tjenester.')
+  const schoolLogoChooser = page.waitForEvent('filechooser')
+  await education.getByRole('button', { name: 'Bilde / skolelogo (valgfritt)' }).click()
+  await (await schoolLogoChooser).setFiles({ name: 'school.png', mimeType: 'image/png', buffer: pixel })
+  await expect(document.locator('.cv-education-section .cv-entry-logo')).toHaveCount(1)
 
   const referenceSection = page.locator('.panel-section').filter({ has: page.getByRole('heading', { name: 'Referanser', exact: true }) }).first()
   await referenceSection.locator('.reference-fields').getByLabel('Navn').fill('Kristian Olsen')
@@ -307,6 +327,7 @@ test('prosjekter, logoer, referanseplassering og A4-innstillinger fungerer', asy
     expect(clippedFields, `${template} skal bryte lange felt`).toEqual([])
     await expect(document.locator('.cv-skill-group')).toContainText('Programmeringsspråk')
     await expect(document.locator('.cv-project .cv-entry-logo')).toHaveCount(1)
+    await expect(document.locator('.cv-education-section .cv-entry-logo')).toHaveCount(1)
     await expect(document.locator('.cv-education-section .cv-entry-bullets')).toContainText('Fordypning i tilgjengelige digitale tjenester.')
     await expect(document.locator('.cv-project .cv-entry-bullets').first()).toContainText('Leverte en dokumentert løsning med målbar effekt.')
     await expect(document.locator('a[href="https://example.no/karriere"]')).toContainText('Se bedriftens nettside')
@@ -317,6 +338,46 @@ test('prosjekter, logoer, referanseplassering og A4-innstillinger fungerer', asy
       return image && heading ? { imageRight: image.right, headingLeft: heading.left, topDifference: Math.abs(image.top - heading.top) } : null
     }))
     expect(mediaAlignment.every((item) => item && item.imageRight <= item.headingLeft && item.topDifference <= 3), `${template} skal plassere bilder til venstre for overskriften`).toBe(true)
+    expect(mediaAlignment).toHaveLength(3)
+
+    const contactAlignment = await document.locator('.cv-contact a, .cv-contact > span').evaluateAll((rows) => rows.map((row) => {
+      const icon = row.querySelector('svg')?.getBoundingClientRect()
+      const editable = row.querySelector('.editable')
+      const firstTextNode = editable?.firstChild
+      if (!icon || !icon.width || !firstTextNode) return null
+      const range = document.createRange()
+      range.setStart(firstTextNode, 0)
+      range.setEnd(firstTextNode, Math.min(1, firstTextNode.textContent?.length ?? 0))
+      const text = range.getBoundingClientRect()
+      return Math.abs((icon.top + icon.height / 2) - (text.top + text.height / 2))
+    }))
+    const visibleContactIcons = contactAlignment.filter((difference): difference is number => difference !== null)
+    expect(visibleContactIcons.every((difference) => difference <= 3), `${template} skal ha kontaktikoner på samme linje som teksten`).toBe(true)
+    expect(visibleContactIcons).toHaveLength(template === 'Harvard' ? 0 : 4)
+
+    const headingRuleGaps = await document.locator('.cv-section > h2').evaluateAll((headings) => headings
+      .filter((heading) => getComputedStyle(heading).borderBottomWidth !== '0px')
+      .map((heading) => {
+        const firstTextNode = heading.firstChild
+        if (!firstTextNode) return null
+        const range = document.createRange()
+        range.selectNodeContents(firstTextNode)
+        const text = range.getBoundingClientRect()
+        const box = heading.getBoundingClientRect()
+        const border = Number.parseFloat(getComputedStyle(heading).borderBottomWidth)
+        return box.bottom - border - text.bottom
+      }))
+    expect(headingRuleGaps.every((gap) => gap !== null && gap >= 2), `${template} skal ha luft mellom hovedoverskrift og linje`).toBe(true)
+
+    const bulletGeometry = await document.locator('.cv-entry-bullets').evaluateAll((lists) => lists.map((list) => ({
+      position: getComputedStyle(list).listStylePosition,
+      aligned: Array.from(list.children).every((item) => {
+        const editable = item.querySelector('.editable')?.getBoundingClientRect()
+        const row = item.getBoundingClientRect()
+        return Boolean(editable && Math.abs(editable.top - row.top) <= 2)
+      }),
+    })))
+    expect(bulletGeometry.every((item) => item.position === 'outside' && item.aligned), `${template} skal holde punkt og første tekstlinje sammen`).toBe(true)
     if (testInfo.project.name === 'desktop') {
       const downloadPromise = page.waitForEvent('download')
       await page.getByRole('button', { name: /Last ned PDF/ }).click()

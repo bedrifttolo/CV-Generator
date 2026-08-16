@@ -17,6 +17,7 @@ import {
   PenLine,
   Plus,
   RotateCcw,
+  Save,
   ShieldCheck,
   Sparkles,
   Trash2,
@@ -68,17 +69,13 @@ type BuilderTab = 'innhold' | 'mal' | 'ai'
 
 const cloneDefault = () => structuredClone(defaultCv)
 const cloneBlank = () => structuredClone(blankCv)
-const isLegacyPersonalExample = (data: Partial<CvData>) =>
-  data.name === 'Thomas Tolo Jensen' ||
-  data.email?.toLowerCase().includes('thomastj278') ||
-  data.website?.toLowerCase().includes('tolojensentech')
+type CvSaveStatus = 'saved' | 'error'
 
 function loadCv(): CvData {
   try {
     const saved = localStorage.getItem('cvklar-document')
     if (!saved) return cloneDefault()
     const parsed = JSON.parse(saved) as Partial<CvData>
-    if (isLegacyPersonalExample(parsed)) return cloneDefault()
     return normalizeCv(parsed, cloneDefault())
   } catch {
     return cloneDefault()
@@ -112,10 +109,24 @@ function App() {
   const [legal, setLegal] = useState<Legal>(null)
   const [mobileMenu, setMobileMenu] = useState(false)
   const [consent, setConsent] = useState(() => localStorage.getItem('cvklar-consent'))
+  const [cvSaveStatus, setCvSaveStatus] = useState<CvSaveStatus>('saved')
+
+  const saveCvLocally = () => {
+    try {
+      localStorage.setItem('cvklar-document', JSON.stringify(cv))
+      localStorage.setItem('cvklar-template', template)
+      localStorage.setItem('cvklar-theme', theme)
+      setCvSaveStatus('saved')
+      return true
+    } catch {
+      setCvSaveStatus('error')
+      return false
+    }
+  }
 
   useEffect(() => {
-    localStorage.setItem('cvklar-document', JSON.stringify(cv))
-  }, [cv])
+    saveCvLocally()
+  }, [cv, template, theme])
 
   useEffect(() => {
     localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(jobs))
@@ -124,11 +135,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem(LETTERS_STORAGE_KEY, JSON.stringify(coverLetters))
   }, [coverLetters])
-
-  useEffect(() => {
-    localStorage.setItem('cvklar-template', template)
-    localStorage.setItem('cvklar-theme', theme)
-  }, [template, theme])
 
   useEffect(() => {
     const onPopState = () => {
@@ -172,7 +178,7 @@ function App() {
           transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
         >
           {view === 'home' && <Home onStartBlank={startBlank} onOpen={() => navigate('builder')} onGuide={() => navigate('guide')} onSelectTemplate={selectTemplate} adsAllowed={consent === 'accepted'} />}
-          {view === 'builder' && <Builder cv={cv} setCv={setCv} template={template} setTemplate={setTemplate} theme={theme} setTheme={setTheme} />}
+          {view === 'builder' && <Builder cv={cv} setCv={setCv} template={template} setTemplate={setTemplate} theme={theme} setTheme={setTheme} saveStatus={cvSaveStatus} onSave={saveCvLocally} />}
           {view === 'jobs' && <JobsPage jobs={jobs} onChange={setJobs} onCreateLetter={(jobId) => navigate('letter', jobId)} />}
           {view === 'guide' && <Guide onStart={startBlank} />}
           {view === 'letter' && <LetterStudio cv={cv} jobs={jobs} coverLetters={coverLetters} onLettersChange={setCoverLetters} initialJobId={selectedJobId} onSelectedJobChange={(jobId) => navigate('letter', jobId)} />}
@@ -346,7 +352,16 @@ function TemplatePoster({ item, index, onSelect }: { item: typeof templates[numb
   )
 }
 
-function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: CvData; setCv: (cv: CvData) => void; template: TemplateId; setTemplate: (id: TemplateId) => void; theme: ThemeId; setTheme: (id: ThemeId) => void }) {
+function Builder({ cv, setCv, template, setTemplate, theme, setTheme, saveStatus, onSave }: {
+  cv: CvData
+  setCv: (cv: CvData) => void
+  template: TemplateId
+  setTemplate: (id: TemplateId) => void
+  theme: ThemeId
+  setTheme: (id: ThemeId) => void
+  saveStatus: CvSaveStatus
+  onSave: () => boolean
+}) {
   const [tab, setTab] = useState<BuilderTab>('innhold')
   const [importing, setImporting] = useState(false)
   const [notice, setNotice] = useState('')
@@ -356,10 +371,12 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
   const [newSectionTitle, setNewSectionTitle] = useState('')
   const [newSectionPlacement, setNewSectionPlacement] = useState<'main' | 'sidebar'>('sidebar')
   const [editingExperienceLogo, setEditingExperienceLogo] = useState<number | null>(null)
+  const [editingEducationLogo, setEditingEducationLogo] = useState<number | null>(null)
   const [editingProjectImage, setEditingProjectImage] = useState<number | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const photoRef = useRef<HTMLInputElement>(null)
   const experienceLogoRef = useRef<HTMLInputElement>(null)
+  const educationLogoRef = useRef<HTMLInputElement>(null)
   const projectImageRef = useRef<HTMLInputElement>(null)
   const findings = useMemo(() => analyzeCv(cv, industry, jobText), [cv, industry, jobText])
 
@@ -428,6 +445,29 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
       setEditingProjectImage(null)
       if (projectImageRef.current) projectImageRef.current.value = ''
     }
+  }
+
+  const changeEducationLogo = async (file?: File) => {
+    if (!file || editingEducationLogo === null) return
+    try {
+      const schoolLogo = await readImageFile(file, 420)
+      updateCv({
+        ...cv,
+        education: cv.education.map((entry, index) => (index === editingEducationLogo ? { ...entry, schoolLogo } : entry)),
+      })
+      setNotice('Bildet for utdanningen er oppdatert.')
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Bildet kunne ikke leses.')
+    } finally {
+      setEditingEducationLogo(null)
+      if (educationLogoRef.current) educationLogoRef.current.value = ''
+    }
+  }
+
+  const saveLocally = () => {
+    setNotice(onSave()
+      ? 'CV-en er lagret lokalt i denne nettleseren.'
+      : 'Kunne ikke lagre lokalt. Fjern eventuelt store bilder og prøv igjen.')
   }
 
   const exportPdf = async () => {
@@ -580,6 +620,11 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
     <div className="builder-shell">
       <div className="builder-topbar">
         <div className="builder-progress"><span className="done">1</span><i /><span className="done">2</span><i /><span>3</span><small>Innhold&nbsp;&nbsp;&nbsp; Utseende&nbsp;&nbsp;&nbsp; Last ned</small></div>
+        <span className={`builder-save-status ${saveStatus}`} role="status">
+          {saveStatus === 'saved' ? <Check /> : <X />}
+          {saveStatus === 'saved' ? 'Lagret lokalt' : 'Lagring feilet'}
+        </span>
+        <button className="button button-small button-outline builder-save-button" onClick={saveLocally}><Save /> Lagre lokalt</button>
         <button className="button button-small" onClick={exportPdf} disabled={isExporting}><Download /> {isExporting ? 'Lager PDF …' : 'Last ned PDF'}</button>
       </div>
       <div className="builder-layout">
@@ -596,6 +641,7 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
                 <input ref={fileRef} type="file" accept=".pdf,.docx,.txt" hidden onChange={(event) => importFile(event.target.files?.[0])} />
                 <input ref={photoRef} type="file" accept={acceptedImageTypes} aria-label="Velg profilbilde" hidden onChange={(event) => changePhoto(event.target.files?.[0])} />
                 <input ref={experienceLogoRef} type="file" accept={acceptedImageTypes} aria-label="Velg bilde eller bedriftslogo" hidden onChange={(event) => changeExperienceLogo(event.target.files?.[0])} />
+                <input ref={educationLogoRef} type="file" accept={acceptedImageTypes} aria-label="Velg bilde eller skolelogo" hidden onChange={(event) => changeEducationLogo(event.target.files?.[0])} />
                 <input ref={projectImageRef} type="file" accept={acceptedImageTypes} aria-label="Velg prosjektbilde" hidden onChange={(event) => changeProjectImage(event.target.files?.[0])} />
 
                 <div className="start-choice" aria-label="Velg hvordan du vil starte">
@@ -700,13 +746,18 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
                 </div>
 
                 <div className="panel-section">
-                  <div className="panel-section-head"><h3>Utdanning</h3><button onClick={() => updateCv({ ...cv, education: [...cv.education, { id: newId('edu'), degree: 'Ny utdanning', school: 'Skole eller studiested', period: 'År til år', bullets: ['Nevn en relevant fordypning, oppgave eller et oppnådd resultat.'] }] })}><Plus /> Legg til</button></div>
+                  <div className="panel-section-head"><h3>Utdanning</h3><button onClick={() => updateCv({ ...cv, education: [...cv.education, { id: newId('edu'), degree: 'Ny utdanning', school: 'Skole eller studiested', period: 'År til år', bullets: ['Nevn en relevant fordypning, oppgave eller et oppnådd resultat.'], schoolLogo: '' }] })}><Plus /> Legg til</button></div>
                   <div className="reorder-list">
                     {cv.education.map((entry, index) => (
                       <article className="education-editor-card" key={entry.id}>
                         <GripVertical />
+                        {entry.schoolLogo && <img className="editor-item-image" src={entry.schoolLogo} alt="" aria-hidden="true" />}
                         <div>
                           <b>{entry.degree}</b><small>{entry.school}</small>
+                          <div className="editor-media-actions">
+                            <button onClick={() => { setEditingEducationLogo(index); educationLogoRef.current?.click() }}><ImagePlus /> {entry.schoolLogo ? 'Bytt bilde / logo' : 'Bilde / skolelogo (valgfritt)'}</button>
+                            {entry.schoolLogo && <button onClick={() => updateEducation(index, { schoolLogo: '' })}><X /> Fjern</button>}
+                          </div>
                           <div className="education-fields">
                             <label>Utdanning / grad<input value={entry.degree} onChange={(event) => updateEducation(index, { degree: event.target.value })} /></label>
                             <label>Skole / studiested<input value={entry.school} onChange={(event) => updateEducation(index, { school: event.target.value })} /></label>

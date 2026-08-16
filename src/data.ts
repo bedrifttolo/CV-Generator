@@ -98,6 +98,7 @@ export const defaultCv: CvData = {
       school: 'Norsk eksempeluniversitet',
       period: '2017 til 2020',
       bullets: ['Fordypning i prosjektarbeid, organisasjonsutvikling og digital samhandling.'],
+      schoolLogo: '',
     },
   ],
   projects: [
@@ -157,6 +158,7 @@ export const blankCv: CvData = {
       school: 'Skole eller studiested',
       period: 'År til år',
       bullets: ['Nevn en relevant fordypning, oppgave eller et oppnådd resultat.'],
+      schoolLogo: '',
     },
   ],
   projects: [

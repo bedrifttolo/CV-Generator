@@ -210,6 +210,7 @@ export function normalizeCv(parsed: Partial<CvData>, fallback: CvData): CvData {
         school: text(entry.school),
         period: text(entry.period),
         bullets: bulletList(entry.bullets),
+        schoolLogo: text(entry.schoolLogo),
       })),
     // Nye eksempelrader skal ikke dukke opp i et dokument som ble lagret før
     // prosjekter og strukturerte referanser fantes.

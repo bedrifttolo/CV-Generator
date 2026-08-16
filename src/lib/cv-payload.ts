@@ -25,6 +25,7 @@ const withoutLargeImages = (data: CvData): CvData => ({
   ...data,
   photo: data.photo.startsWith('data:') ? '' : data.photo,
   experience: data.experience.map((entry) => ({ ...entry, companyLogo: entry.companyLogo?.startsWith('data:') ? '' : entry.companyLogo })),
+  education: data.education.map((entry) => ({ ...entry, schoolLogo: entry.schoolLogo?.startsWith('data:') ? '' : entry.schoolLogo })),
   projects: data.projects.map((project) => ({ ...project, image: project.image?.startsWith('data:') ? '' : project.image })),
 })
 

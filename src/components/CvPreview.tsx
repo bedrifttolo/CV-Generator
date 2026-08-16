@@ -161,7 +161,7 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
       entry.bullets.some((bullet) => bullet.trim()) || entry.links?.some((link) => link.url.trim()),
     ),
   )
-  const visibleEducation = data.education.filter((entry) => Boolean(entry.degree.trim() || entry.school.trim() || entry.period.trim() || entry.bullets.some((bullet) => bullet.trim())))
+  const visibleEducation = data.education.filter((entry) => Boolean(entry.degree.trim() || entry.school.trim() || entry.period.trim() || entry.schoolLogo || entry.bullets.some((bullet) => bullet.trim())))
   const visibleSkills = data.skills.map((value, index) => ({ value, index })).filter(({ value }) => value.trim())
   const visibleSkillGroups = data.skillGroups
     .map((group, index) => ({
@@ -237,7 +237,8 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
           {visibleEducation.map((entry) => {
             const index = data.education.indexOf(entry)
             const bullets = entry.bullets.map((bullet, bulletIndex) => ({ value: cleanBullet(bullet), bulletIndex })).filter(({ value }) => value)
-            return <article className="cv-entry" data-cv-block key={entry.id}>
+            return <article className={`cv-entry${entry.schoolLogo ? ' cv-entry-with-media' : ''}`} data-cv-block key={entry.id}>
+              {entry.schoolLogo && <img className="cv-entry-logo" src={entry.schoolLogo} alt="" aria-hidden="true" />}
               <div className="cv-entry-body">
                 <div className="cv-entry-head" data-cv-fragment>
                   <div>
