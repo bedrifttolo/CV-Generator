@@ -97,6 +97,7 @@ export const defaultCv: CvData = {
       degree: 'Bachelor i organisasjon og ledelse',
       school: 'Norsk eksempeluniversitet',
       period: '2017 til 2020',
+      bullets: ['Fordypning i prosjektarbeid, organisasjonsutvikling og digital samhandling.'],
     },
   ],
   projects: [
@@ -105,7 +106,11 @@ export const defaultCv: CvData = {
       title: 'Digital onboarding',
       subtitle: 'Prosjektleder',
       period: '2024',
-      description: 'Ledet et tverrfaglig team som gjorde en manuell velkomstprosess digital. Ny løsning kuttet behandlingstiden fra fem dager til én.',
+      description: 'Digitaliserte en manuell velkomstprosess for nye kunder.',
+      bullets: [
+        'Ledet et tverrfaglig team fra innsikt til lansering.',
+        'Kuttet behandlingstiden fra fem dager til én.',
+      ],
       technologies: ['Prosjektledelse', 'Tjenestedesign', 'Power BI'],
       url: '',
       githubUrl: '',
@@ -151,6 +156,7 @@ export const blankCv: CvData = {
       degree: 'Utdanning eller grad',
       school: 'Skole eller studiested',
       period: 'År til år',
+      bullets: ['Nevn en relevant fordypning, oppgave eller et oppnådd resultat.'],
     },
   ],
   projects: [
@@ -160,6 +166,7 @@ export const blankCv: CvData = {
       subtitle: 'Rollen din i prosjektet',
       period: 'År',
       description: 'Beskriv kort hva prosjektet gikk ut på, hva du gjorde og hva resultatet ble.',
+      bullets: ['Beskriv ditt viktigste bidrag eller et konkret resultat.'],
       technologies: ['Verktøy eller metode'],
       url: '',
       githubUrl: '',

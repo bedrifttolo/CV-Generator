@@ -37,6 +37,7 @@ export type Education = {
   degree: string
   school: string
   period: string
+  bullets: string[]
 }
 
 export type Project = {
@@ -45,6 +46,7 @@ export type Project = {
   subtitle?: string
   period?: string
   description?: string
+  bullets: string[]
   technologies?: string[]
   url?: string
   githubUrl?: string

@@ -185,8 +185,11 @@ const parseProjects = (lines: string[]): Project[] => {
         period,
         subtitle: '',
         description: '',
+        bullets: [],
         technologies: [],
       }
+    } else if (hasBullet(rawLine)) {
+      active.bullets.push(line)
     } else if (!active.subtitle && !hasBullet(rawLine) && line.length < 70) {
       active.subtitle = line
     } else {
@@ -302,17 +305,22 @@ export function parseResume(text: string, fallback: CvData): CvData {
     const heading = line.replace(periodPattern, '').replace(/^[,|·\s–—-]+|[,|·\s–—-]+$/g, '').trim()
     if (!activeEducation) {
       if (!period && (line.length > 70 || (line.endsWith('.') && line.length > 45))) return
-      activeEducation = { id: `import-edu-${index}`, degree: heading || line, school: '', period }
+      activeEducation = { id: `import-edu-${index}`, degree: heading || line, school: '', period, bullets: [] }
+    } else if (hasBullet(rawLine)) {
+      activeEducation.bullets.push(line)
     } else if (period) {
-      if (heading && !activeEducation.school) activeEducation.school = heading
-      activeEducation.period = period
-      education.push(activeEducation)
-      activeEducation = null
+      if (activeEducation.period && heading) {
+        education.push(activeEducation)
+        activeEducation = { id: `import-edu-${index}`, degree: heading, school: '', period, bullets: [] }
+      } else {
+        if (heading && !activeEducation.school) activeEducation.school = heading
+        activeEducation.period = period
+      }
     } else if (!activeEducation.school) {
       activeEducation.school = line
     } else {
       education.push(activeEducation)
-      activeEducation = { id: `import-edu-${index}`, degree: line, school: '', period: '' }
+      activeEducation = { id: `import-edu-${index}`, degree: line, school: '', period: '', bullets: [] }
     }
   })
   if (activeEducation) education.push(activeEducation)

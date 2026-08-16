@@ -12,6 +12,26 @@ const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '')
 const storedText = (value: unknown, fallback: string) => (typeof value === 'string' ? value.trim() : fallback)
 const textList = (value: unknown, fallback: string[] = []) =>
   Array.isArray(value) ? value.map(text).filter(Boolean) : fallback
+const stripBulletMarker = (value: string) => value.replace(/^[•·▪◦‣●–—-]\s*/, '').trim()
+const bulletList = (value: unknown, fallback: string[] = []) =>
+  textList(value, fallback).map(stripBulletMarker).filter(Boolean)
+
+const splitLegacyBulletText = (value: unknown) => {
+  const source = text(value)
+  if (!source) return { description: '', bullets: [] as string[] }
+  const marker = /(?:^|\s+)[•▪◦‣●–—-]\s+(?=[\p{L}\d])/gu
+  const matches = [...source.matchAll(marker)]
+  const isBulletText = matches.length > 1 || (matches.length === 1 && (matches[0].index ?? 1) === 0)
+  if (!isBulletText) return { description: source, bullets: [] as string[] }
+
+  const description = source.slice(0, matches[0].index).trim()
+  const bullets = matches.map((match, index) => {
+    const start = (match.index ?? 0) + match[0].length
+    const end = matches[index + 1]?.index ?? source.length
+    return stripBulletMarker(source.slice(start, end).trim())
+  }).filter(Boolean)
+  return { description, bullets }
+}
 
 export function normalizeSkillGroups(value: unknown): SkillGroup[] {
   if (!Array.isArray(value)) return []
@@ -80,6 +100,7 @@ export function normalizeProjects(value: unknown): Project[] | null {
       if (!item || typeof item !== 'object') return null
       const entry = item as Partial<Project>
       const links = normalizeLinks(entry.links)
+      const legacyContent = splitLegacyBulletText(entry.description)
       const legacyUrl = text(entry.url)
       const legacyGithubUrl = text(entry.githubUrl)
       if (legacyUrl && !links.some((link) => link.url === legacyUrl)) links.push({ id: newId('link'), label: 'Åpne prosjekt', url: legacyUrl })
@@ -89,7 +110,9 @@ export function normalizeProjects(value: unknown): Project[] | null {
         title: text(entry.title),
         subtitle: text(entry.subtitle),
         period: text(entry.period),
-        description: text(entry.description),
+        description: legacyContent.description,
+        bullets: [...legacyContent.bullets, ...bulletList(entry.bullets)]
+          .filter((value, index, items) => items.indexOf(value) === index),
         technologies: Array.isArray(entry.technologies) ? entry.technologies.map(text).filter(Boolean) : [],
         url: '',
         githubUrl: '',
@@ -102,7 +125,7 @@ export function normalizeProjects(value: unknown): Project[] | null {
 
 export const hasProjectContent = (project: Project) =>
   Boolean(
-    project.title || project.subtitle || project.description || project.period || project.technologies?.length ||
+    project.title || project.subtitle || project.description || project.bullets?.length || project.period || project.technologies?.length ||
     project.url || project.githubUrl || project.image || project.links?.some((link) => link.url),
   )
 
@@ -175,7 +198,7 @@ export function normalizeCv(parsed: Partial<CvData>, fallback: CvData): CvData {
         role: text(entry.role),
         company: text(entry.company),
         period: text(entry.period),
-        bullets: textList(entry.bullets),
+        bullets: bulletList(entry.bullets),
         companyLogo: text(entry.companyLogo),
         links: normalizeLinks(entry.links),
       })),
@@ -186,6 +209,7 @@ export function normalizeCv(parsed: Partial<CvData>, fallback: CvData): CvData {
         degree: text(entry.degree),
         school: text(entry.school),
         period: text(entry.period),
+        bullets: bulletList(entry.bullets),
       })),
     // Nye eksempelrader skal ikke dukke opp i et dokument som ble lagret før
     // prosjekter og strukturerte referanser fantes.

@@ -47,6 +47,7 @@ function Editable({
 }
 
 const toHref = (value: string) => (/^https?:\/\//i.test(value) ? value : `https://${value}`)
+const cleanBullet = (value: string) => value.replace(/^[•·▪◦‣●–—-]\s*/, '').trim()
 
 const linkLabel = (value: string) => {
   try {
@@ -85,6 +86,13 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
   const updateEducation = (index: number, key: 'degree' | 'school' | 'period', value: string) => {
     update('education', data.education.map((entry, itemIndex) => (itemIndex === index ? { ...entry, [key]: value } : entry)))
   }
+  const updateEducationBullet = (educationIndex: number, bulletIndex: number, value: string) => {
+    update('education', data.education.map((entry, itemIndex) =>
+      itemIndex === educationIndex
+        ? { ...entry, bullets: entry.bullets.map((bullet, index) => (index === bulletIndex ? value : bullet)) }
+        : entry,
+    ))
+  }
   const updateProject = (index: number, key: keyof Project, value: string) => {
     update('projects', projects.map((entry, itemIndex) => (itemIndex === index ? { ...entry, [key]: value } : entry)))
   }
@@ -92,6 +100,13 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
     update('projects', projects.map((entry, itemIndex) =>
       itemIndex === projectIndex
         ? { ...entry, technologies: (entry.technologies ?? []).map((item, index) => (index === techIndex ? value : item)) }
+        : entry,
+    ))
+  }
+  const updateProjectBullet = (projectIndex: number, bulletIndex: number, value: string) => {
+    update('projects', projects.map((entry, itemIndex) =>
+      itemIndex === projectIndex
+        ? { ...entry, bullets: entry.bullets.map((bullet, index) => (index === bulletIndex ? value : bullet)) }
         : entry,
     ))
   }
@@ -146,7 +161,7 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
       entry.bullets.some((bullet) => bullet.trim()) || entry.links?.some((link) => link.url.trim()),
     ),
   )
-  const visibleEducation = data.education.filter((entry) => Boolean(entry.degree.trim() || entry.school.trim() || entry.period.trim()))
+  const visibleEducation = data.education.filter((entry) => Boolean(entry.degree.trim() || entry.school.trim() || entry.period.trim() || entry.bullets.some((bullet) => bullet.trim())))
   const visibleSkills = data.skills.map((value, index) => ({ value, index })).filter(({ value }) => value.trim())
   const visibleSkillGroups = data.skillGroups
     .map((group, index) => ({
@@ -171,27 +186,28 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
   }
   if (visibleExperience.length) {
     sections.experience = (
-      <section className="cv-section" key="experience">
+      <section className="cv-section cv-experience-section" key="experience">
         <h2>Erfaring</h2>
         <div className="cv-entries">
           {visibleExperience.map((entry) => {
             const index = data.experience.indexOf(entry)
             const links = (entry.links ?? []).filter((link) => link.url.trim())
-            return <article className="cv-entry" data-cv-block key={entry.id}>
+            const bullets = entry.bullets.map((bullet, bulletIndex) => ({ value: cleanBullet(bullet), bulletIndex })).filter(({ value }) => value)
+            return <article className={`cv-entry${entry.companyLogo ? ' cv-entry-with-media' : ''}`} data-cv-block key={entry.id}>
               {entry.companyLogo && <img className="cv-entry-logo" src={entry.companyLogo} alt="" aria-hidden="true" />}
               <div className="cv-entry-body">
-                <div className="cv-entry-head">
+                <div className="cv-entry-head" data-cv-fragment>
                   <div>
                     <h3><Editable onCommit={(value) => updateExperience(index, 'role', value)}>{entry.role}</Editable></h3>
                     <p><Editable onCommit={(value) => updateExperience(index, 'company', value)}>{entry.company}</Editable></p>
                   </div>
                   {entry.period && <time><Editable onCommit={(value) => updateExperience(index, 'period', value)}>{entry.period}</Editable></time>}
                 </div>
-                {entry.bullets.length > 0 && (
-                  <ul>
-                    {entry.bullets.map((bullet, bulletIndex) => (
-                      <li key={`${entry.id}-${bulletIndex}`}>
-                        <Editable multiline onCommit={(value) => updateBullet(index, bulletIndex, value)}>{bullet}</Editable>
+                {bullets.length > 0 && (
+                  <ul className="cv-entry-bullets">
+                    {bullets.map(({ value, bulletIndex }) => (
+                      <li data-cv-fragment key={`${entry.id}-${bulletIndex}`}>
+                        <Editable multiline onCommit={(next) => updateBullet(index, bulletIndex, cleanBullet(next))}>{value}</Editable>
                       </li>
                     ))}
                   </ul>
@@ -215,20 +231,30 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
   }
   if (visibleEducation.length) {
     sections.education = (
-      <section className="cv-section" key="education">
+      <section className="cv-section cv-education-section" key="education">
         <h2>Utdanning</h2>
         <div className="cv-entries compact">
           {visibleEducation.map((entry) => {
             const index = data.education.indexOf(entry)
+            const bullets = entry.bullets.map((bullet, bulletIndex) => ({ value: cleanBullet(bullet), bulletIndex })).filter(({ value }) => value)
             return <article className="cv-entry" data-cv-block key={entry.id}>
               <div className="cv-entry-body">
-                <div className="cv-entry-head">
+                <div className="cv-entry-head" data-cv-fragment>
                   <div>
                     <h3><Editable onCommit={(value) => updateEducation(index, 'degree', value)}>{entry.degree}</Editable></h3>
                     <p><Editable onCommit={(value) => updateEducation(index, 'school', value)}>{entry.school}</Editable></p>
                   </div>
                   {entry.period && <time><Editable onCommit={(value) => updateEducation(index, 'period', value)}>{entry.period}</Editable></time>}
                 </div>
+                {bullets.length > 0 && (
+                  <ul className="cv-entry-bullets">
+                    {bullets.map(({ value, bulletIndex }) => (
+                      <li data-cv-fragment key={`${entry.id}-${bulletIndex}`}>
+                        <Editable multiline onCommit={(next) => updateEducationBullet(index, bulletIndex, cleanBullet(next))}>{value}</Editable>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </article>
           })}
@@ -238,7 +264,7 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
   }
   if (visibleProjects.length) {
     sections.projects = (
-      <section className="cv-section" key="projects">
+      <section className="cv-section cv-projects-section" key="projects">
         <h2>Mine prosjekter</h2>
         <div className="cv-entries">
           {visibleProjects.map((project) => {
@@ -252,11 +278,12 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
               projectLinks.push({ id: `${project.id}-legacy-url`, label: '', url: project.url })
             }
             const visibleLinks = projectLinks.filter((link) => link.url.trim())
+            const bullets = project.bullets.map((bullet, bulletIndex) => ({ value: cleanBullet(bullet), bulletIndex })).filter(({ value }) => value)
             return (
-              <article className="cv-entry cv-project" data-cv-block key={project.id}>
+              <article className={`cv-entry cv-project${project.image ? ' cv-entry-with-media' : ''}`} data-cv-block key={project.id}>
                 {project.image && <img className="cv-entry-logo" src={project.image} alt="" aria-hidden="true" />}
                 <div className="cv-entry-body">
-                  <div className="cv-entry-head">
+                  <div className="cv-entry-head" data-cv-fragment>
                     <div>
                       <h3><Editable onCommit={(value) => updateProject(index, 'title', value)}>{project.title}</Editable></h3>
                       {project.subtitle && <p><Editable onCommit={(value) => updateProject(index, 'subtitle', value)}>{project.subtitle}</Editable></p>}
@@ -273,9 +300,18 @@ export default function CvPreview({ data, template, theme, onChange }: Props) {
                     {project.period && <time><Editable onCommit={(value) => updateProject(index, 'period', value)}>{project.period}</Editable></time>}
                   </div>
                   {project.description && (
-                    <div className="cv-project-text">
+                    <div className="cv-project-text" data-cv-fragment>
                       <Editable multiline onCommit={(value) => updateProject(index, 'description', value)}>{project.description}</Editable>
                     </div>
+                  )}
+                  {bullets.length > 0 && (
+                    <ul className="cv-entry-bullets cv-project-bullets">
+                      {bullets.map(({ value, bulletIndex }) => (
+                        <li data-cv-fragment key={`${project.id}-bullet-${bulletIndex}`}>
+                          <Editable multiline onCommit={(next) => updateProjectBullet(index, bulletIndex, cleanBullet(next))}>{value}</Editable>
+                        </li>
+                      ))}
+                    </ul>
                   )}
                   {visibleLinks.length > 0 && (
                     <p className="cv-entry-links cv-project-links">

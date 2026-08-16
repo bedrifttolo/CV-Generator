@@ -260,9 +260,9 @@ export function sanitizedCandidate(cv: CvData) {
     profile: cv.summary,
     currentTitle: cv.title,
     experience: cv.experience.map(({ role, company, period, bullets }) => ({ role, company, period, bullets })),
-    education: cv.education.map(({ degree, school, period }) => ({ degree, school, period })),
+    education: cv.education.map(({ degree, school, period, bullets }) => ({ degree, school, period, bullets })),
     skills: [...cv.skills, ...cv.skillGroups.flatMap((group) => group.items)],
-    projects: cv.projects.map(({ title, subtitle, period, description, technologies }) => ({ title, subtitle, period, description, technologies })),
+    projects: cv.projects.map(({ title, subtitle, period, description, bullets, technologies }) => ({ title, subtitle, period, description, bullets, technologies })),
     languages: cv.languages,
   }
 }
@@ -301,7 +301,7 @@ export function localCandidateMatch(cv: CvData, job: Pick<JobPosting, 'originalT
   })).filter((entry) => entry.score > 0).sort((a, b) => b.score - a.score)
   const scoredProjects = cv.projects.map((project) => ({
     label: project.title,
-    score: matches.filter((term) => `${project.title} ${project.description || ''} ${(project.technologies || []).join(' ')}`.toLowerCase().includes(term.toLowerCase())).length,
+    score: matches.filter((term) => `${project.title} ${project.description || ''} ${project.bullets.join(' ')} ${(project.technologies || []).join(' ')}`.toLowerCase().includes(term.toLowerCase())).length,
   })).filter((project) => project.score > 0).sort((a, b) => b.score - a.score)
   const strongMatches = matches.slice(0, 8).map((requirement) => ({ requirement, evidence: `Begrepet er dokumentert i CV-en.` }))
   return {

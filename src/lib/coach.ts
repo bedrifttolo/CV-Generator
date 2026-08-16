@@ -28,7 +28,7 @@ const joinNatural = (items: string[]) => {
 export function analyzeCv(data: CvData, industry: Industry, jobText: string): CoachFinding[] {
   const findings: CoachFinding[] = []
   const groupedSkills = data.skillGroups.flatMap((group) => [group.title, ...group.items])
-  const allText = `${data.title} ${data.summary} ${[...data.skills, ...groupedSkills].join(' ')} ${data.experience.flatMap((item) => item.bullets).join(' ')}`.toLowerCase()
+  const allText = `${data.title} ${data.summary} ${[...data.skills, ...groupedSkills].join(' ')} ${data.experience.flatMap((item) => item.bullets).join(' ')} ${data.education.flatMap((item) => item.bullets).join(' ')} ${data.projects.flatMap((item) => item.bullets).join(' ')}`.toLowerCase()
   const measurable = /\b\d+(?:[,.]\d+)?\s*(?:%|kr|mill|timer|dager|brukere|kunder|prosjekter)?\b/i.test(allText)
   const jobWords = jobText.toLowerCase().match(/[a-zæøå]{5,}/g) ?? []
   const uniqueJobWords = [...new Set(jobWords)].filter((word) => !['dette', 'eller', 'etter', 'innen', 'ønsker', 'søker'].includes(word))

@@ -523,6 +523,7 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
       subtitle: '',
       period: '',
       description: 'Kort prosjektbeskrivelse',
+      bullets: ['Beskriv ditt viktigste bidrag eller et konkret resultat.'],
       technologies: [],
       url: '',
       githubUrl: '',
@@ -549,6 +550,13 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
     updateCv({
       ...cv,
       experience: cv.experience.map((entry, itemIndex) => (itemIndex === index ? { ...entry, ...patch } : entry)),
+    })
+  }
+
+  const updateEducation = (index: number, patch: Partial<CvData['education'][number]>) => {
+    updateCv({
+      ...cv,
+      education: cv.education.map((entry, itemIndex) => (itemIndex === index ? { ...entry, ...patch } : entry)),
     })
   }
 
@@ -587,7 +595,7 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
                 <div className="panel-heading"><span>Dokument</span><h2>Innhold og rekkefølge</h2><p>Klikk også direkte i arket for å skrive.</p></div>
                 <input ref={fileRef} type="file" accept=".pdf,.docx,.txt" hidden onChange={(event) => importFile(event.target.files?.[0])} />
                 <input ref={photoRef} type="file" accept={acceptedImageTypes} aria-label="Velg profilbilde" hidden onChange={(event) => changePhoto(event.target.files?.[0])} />
-                <input ref={experienceLogoRef} type="file" accept={acceptedImageTypes} aria-label="Velg bedriftslogo" hidden onChange={(event) => changeExperienceLogo(event.target.files?.[0])} />
+                <input ref={experienceLogoRef} type="file" accept={acceptedImageTypes} aria-label="Velg bilde eller bedriftslogo" hidden onChange={(event) => changeExperienceLogo(event.target.files?.[0])} />
                 <input ref={projectImageRef} type="file" accept={acceptedImageTypes} aria-label="Velg prosjektbilde" hidden onChange={(event) => changeProjectImage(event.target.files?.[0])} />
 
                 <div className="start-choice" aria-label="Velg hvordan du vil starte">
@@ -653,7 +661,7 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
                         <div>
                           <b>{entry.role}</b><small>{entry.company}</small>
                           <div className="editor-media-actions">
-                            <button onClick={() => { setEditingExperienceLogo(index); experienceLogoRef.current?.click() }}><ImagePlus /> {entry.companyLogo ? 'Bytt logo' : 'Bedriftslogo (valgfritt)'}</button>
+                            <button onClick={() => { setEditingExperienceLogo(index); experienceLogoRef.current?.click() }}><ImagePlus /> {entry.companyLogo ? 'Bytt bilde / logo' : 'Bilde / bedriftslogo (valgfritt)'}</button>
                             {entry.companyLogo && <button onClick={() => updateCv({ ...cv, experience: cv.experience.map((item, itemIndex) => itemIndex === index ? { ...item, companyLogo: '' } : item) })}><X /> Fjern</button>}
                           </div>
                           <div className="experience-fields">
@@ -692,11 +700,28 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
                 </div>
 
                 <div className="panel-section">
-                  <div className="panel-section-head"><h3>Utdanning</h3><button onClick={() => updateCv({ ...cv, education: [...cv.education, { id: newId('edu'), degree: 'Ny utdanning', school: 'Skole eller studiested', period: 'År til år' }] })}><Plus /> Legg til</button></div>
+                  <div className="panel-section-head"><h3>Utdanning</h3><button onClick={() => updateCv({ ...cv, education: [...cv.education, { id: newId('edu'), degree: 'Ny utdanning', school: 'Skole eller studiested', period: 'År til år', bullets: ['Nevn en relevant fordypning, oppgave eller et oppnådd resultat.'] }] })}><Plus /> Legg til</button></div>
                   <div className="reorder-list">
                     {cv.education.map((entry, index) => (
-                      <article key={entry.id}>
-                        <GripVertical /><div><b>{entry.degree}</b><small>{entry.school}</small></div>
+                      <article className="education-editor-card" key={entry.id}>
+                        <GripVertical />
+                        <div>
+                          <b>{entry.degree}</b><small>{entry.school}</small>
+                          <div className="education-fields">
+                            <label>Utdanning / grad<input value={entry.degree} onChange={(event) => updateEducation(index, { degree: event.target.value })} /></label>
+                            <label>Skole / studiested<input value={entry.school} onChange={(event) => updateEducation(index, { school: event.target.value })} /></label>
+                            <label className="field-wide">Periode<input value={entry.period} onChange={(event) => updateEducation(index, { period: event.target.value })} /></label>
+                            <div className="bullet-editor field-wide">
+                              <div><b>Punktvis forklaring</b><button onClick={() => updateEducation(index, { bullets: [...entry.bullets, 'Ny fordypning eller nytt resultat'] })}><Plus /> Nytt punkt</button></div>
+                              {entry.bullets.map((bullet, bulletIndex) => (
+                                <div className="bullet-row" key={`${entry.id}-editor-bullet-${bulletIndex}`}>
+                                  <textarea aria-label={`Utdanningspunkt ${bulletIndex + 1}`} rows={2} value={bullet} onChange={(event) => updateEducation(index, { bullets: entry.bullets.map((item, itemIndex) => itemIndex === bulletIndex ? event.target.value : item) })} />
+                                  <button onClick={() => updateEducation(index, { bullets: entry.bullets.filter((_, itemIndex) => itemIndex !== bulletIndex) })} aria-label={`Slett utdanningspunkt ${bulletIndex + 1}`}><X /></button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                         <span><button onClick={() => updateCv({ ...cv, education: move(cv.education, index, -1) })} aria-label="Flytt utdanning opp">↑</button><button onClick={() => updateCv({ ...cv, education: move(cv.education, index, 1) })} aria-label="Flytt utdanning ned">↓</button><button onClick={() => updateCv({ ...cv, education: cv.education.filter((item) => item.id !== entry.id) })} aria-label="Slett utdanning"><Trash2 /></button></span>
                       </article>
                     ))}
@@ -720,7 +745,16 @@ function Builder({ cv, setCv, template, setTemplate, theme, setTheme }: { cv: Cv
                             <label>Prosjektnavn<input value={entry.title} onChange={(event) => updateProject(index, 'title', event.target.value)} /></label>
                             <label>Rolle / undertittel<input value={entry.subtitle ?? ''} onChange={(event) => updateProject(index, 'subtitle', event.target.value)} /></label>
                             <label>Periode<input value={entry.period ?? ''} onChange={(event) => updateProject(index, 'period', event.target.value)} /></label>
-                            <label className="field-wide">Kort beskrivelse<textarea rows={3} value={entry.description ?? ''} onChange={(event) => updateProject(index, 'description', event.target.value)} /></label>
+                            <label className="field-wide">Kort introduksjon <small>valgfritt</small><textarea rows={2} value={entry.description ?? ''} onChange={(event) => updateProject(index, 'description', event.target.value)} /></label>
+                            <div className="bullet-editor field-wide">
+                              <div><b>Punktvis forklaring</b><button onClick={() => updateProject(index, 'bullets', [...entry.bullets, 'Nytt bidrag eller resultat'])}><Plus /> Nytt punkt</button></div>
+                              {entry.bullets.map((bullet, bulletIndex) => (
+                                <div className="bullet-row" key={`${entry.id}-editor-bullet-${bulletIndex}`}>
+                                  <textarea aria-label={`Prosjektpunkt ${bulletIndex + 1}`} rows={2} value={bullet} onChange={(event) => updateProject(index, 'bullets', entry.bullets.map((item, itemIndex) => itemIndex === bulletIndex ? event.target.value : item))} />
+                                  <button onClick={() => updateProject(index, 'bullets', entry.bullets.filter((_, itemIndex) => itemIndex !== bulletIndex))} aria-label={`Slett prosjektpunkt ${bulletIndex + 1}`}><X /></button>
+                                </div>
+                              ))}
+                            </div>
                             <label className="field-wide">Teknologier <small>Skill med komma eller ·</small><input value={(entry.technologies ?? []).join(' · ')} onChange={(event) => updateProject(index, 'technologies', event.target.value.split(/[,·]/).map((item) => item.trim()))} /></label>
                             <div className="entry-link-editor field-wide">
                               <div><b>Lenker <small>valgfritt · app, nettside eller GitHub</small></b><button onClick={() => updateProject(index, 'links', [...(entry.links ?? []), { id: newId('link'), label: 'Åpne prosjekt', url: '' }])}><Plus /> Ny lenke</button></div>
